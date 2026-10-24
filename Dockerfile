@@ -1,15 +1,15 @@
-# Compila e roda o servidor Java (somente JDK, sem Maven).
-FROM eclipse-temurin:17-jdk AS build
+# Compila o servidor Java e inclui o driver JDBC do PostgreSQL no JAR.
+FROM maven:3.9.9-eclipse-temurin-17 AS build
 WORKDIR /app
+COPY pom.xml .
 COPY backend ./backend
-RUN mkdir out && javac -encoding UTF-8 -d out $(find backend/src -name '*.java')
+RUN mvn -B -DskipTests package
 
 FROM eclipse-temurin:17-jre
 WORKDIR /app
-COPY --from=build /app/out ./out
+COPY --from=build /app/target/clinica-vitallis-1.0.0.jar ./app.jar
 COPY frontend ./frontend
-# Aceita conexões externas (necessário em servidor). A porta vem da variável PORT do Render.
 ENV CLINICA_HOST=0.0.0.0
 ENV PORT=8080
 EXPOSE 8080
-CMD ["java", "-cp", "out", "ApiServer"]
+CMD ["java", "-jar", "app.jar"]

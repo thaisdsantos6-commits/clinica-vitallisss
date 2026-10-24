@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 import model.Paciente;
 import repository.PacienteRepository;
+import util.DatabaseException;
 
 /** Regras de negócio de pacientes. Toda validação é feita aqui, independentemente do front-end. */
 public class PacienteService {
@@ -15,7 +16,6 @@ public class PacienteService {
             Pattern.compile("^data:image/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$");
 
     private final PacienteRepository repository;
-    private int proximoId = 1;
 
     public PacienteService(PacienteRepository repository) {
         this.repository = repository;
@@ -32,8 +32,14 @@ public class PacienteService {
             throw new IllegalArgumentException("CPF inválido: já existe um paciente com este CPF.");
         }
 
-        Paciente paciente = new Paciente(proximoId++, dados[0], dados[1], dados[2], dados[3]);
-        return repository.salvar(paciente);
+        try {
+            return repository.salvar(new Paciente(0, dados[0], dados[1], dados[2], dados[3]));
+        } catch (DatabaseException e) {
+            if ("23505".equals(e.getSqlState())) {
+                throw new IllegalArgumentException("CPF inválido: já existe um paciente com este CPF.", e);
+            }
+            throw e;
+        }
     }
 
     public synchronized Paciente atualizar(int id, String nome, String cpf, String convenio, String foto) {
@@ -41,7 +47,14 @@ public class PacienteService {
         if (repository.existePorCpfExcetoId(dados[1], id)) {
             throw new IllegalArgumentException("CPF inválido: já existe um paciente com este CPF.");
         }
-        return repository.atualizar(id, dados[0], dados[1], dados[2], dados[3]).orElse(null);
+        try {
+            return repository.atualizar(id, dados[0], dados[1], dados[2], dados[3]).orElse(null);
+        } catch (DatabaseException e) {
+            if ("23505".equals(e.getSqlState())) {
+                throw new IllegalArgumentException("CPF inválido: já existe um paciente com este CPF.", e);
+            }
+            throw e;
+        }
     }
 
     public synchronized List<Paciente> listarTodos() {
