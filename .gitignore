@@ -1,0 +1,15 @@
+# Compilados
+out/
+target/
+*.class
+
+# Segredos e configurações locais
+.env
+.env.*
+
+# IDE / sistema
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db

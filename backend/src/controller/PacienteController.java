@@ -2,7 +2,6 @@ package controller;
 
 import java.util.List;
 import model.Paciente;
-import service.AgendaService;
 import service.PacienteService;
 
 /**
@@ -11,11 +10,9 @@ import service.PacienteService;
  */
 public class PacienteController {
     private final PacienteService pacienteService;
-    private final AgendaService agendaService;
 
-    public PacienteController(PacienteService pacienteService, AgendaService agendaService) {
+    public PacienteController(PacienteService pacienteService) {
         this.pacienteService = pacienteService;
-        this.agendaService = agendaService;
     }
 
     public List<Paciente> listar() {
@@ -36,8 +33,6 @@ public class PacienteController {
 
     /** Retorna false se o paciente não existir. */
     public boolean remover(int id) {
-        if (!pacienteService.remover(id)) return false;
-        agendaService.removerPorPaciente(id);
-        return true;
+        return pacienteService.remover(id);
     }
 }

@@ -4,13 +4,14 @@
 
 Sistema de gerenciamento de clínica médica (Centro de Saúde Vitalis), desenvolvido para demonstrar conhecimentos de desenvolvimento web, backend, frontend, organização em camadas (MVC), autenticação, cadastro de pacientes e agendamento de consultas.
 
-O backend em Java usa apenas o JDK (sem Spring, Maven ou Gradle) e também serve o frontend, então basta um comando para executar tudo.
+O backend em Java também serve o frontend e usa PostgreSQL para persistir pacientes e consultas.
 
-> **Projeto de demonstração.** Os dados ficam **em memória** e são perdidos ao reiniciar o servidor.
+> **Importante:** usuários e sessões ainda são mantidos em memória. As credenciais de demonstração não devem ser usadas em produção.
 
 ## Tecnologias
 
-- Java (somente JDK: `com.sun.net.httpserver`)
+- Java 17 (`com.sun.net.httpserver`) e Maven
+- PostgreSQL via JDBC
 - HTML5
 - CSS3
 - JavaScript (puro, sem frameworks)
@@ -38,7 +39,7 @@ O backend em Java usa apenas o JDK (sem Spring, Maven ou Gradle) e também serve
 | `backend/` | Código Java (servidor e API) |
 | `backend/src/controller` | Liga a camada HTTP às regras de negócio (`PacienteController`) |
 | `backend/src/model` | Entidades: `Paciente`, `Consulta`, `Usuario` |
-| `backend/src/repository` | Armazenamento e consulta de dados (`PacienteRepository`, em memória) |
+| `backend/src/repository` | Armazenamento e consulta de dados (`PacienteRepository`, `ConsultaRepository`, PostgreSQL) |
 | `backend/src/service` | Regras de negócio e validações: `PacienteService`, `AgendaService`, `AutenticacaoService` |
 | `backend/src/util` | Funções auxiliares: `Seguranca` (hash de senha e tokens) |
 | `backend/src/ApiServer.java` | Ponto de entrada: rotas `/api` e arquivos do frontend |
@@ -56,12 +57,15 @@ clinica-medica/
 │   │   │   ├── Consulta.java
 │   │   │   └── Usuario.java
 │   │   ├── repository/
-│   │   │   └── PacienteRepository.java
+│   │   │   ├── PacienteRepository.java
+│   │   │   └── ConsultaRepository.java
 │   │   ├── service/
 │   │   │   ├── PacienteService.java
 │   │   │   ├── AgendaService.java
 │   │   │   └── AutenticacaoService.java
 │   │   ├── util/
+│   │   │   ├── Database.java
+│   │   │   ├── DatabaseException.java
 │   │   │   └── Seguranca.java
 │   │   └── ApiServer.java
 │   └── README.md
@@ -71,6 +75,7 @@ clinica-medica/
 │   ├── index.html
 │   ├── app.js
 │   └── style.css
+├── pom.xml
 ├── .gitattributes
 ├── .gitignore
 ├── README.md
@@ -79,37 +84,55 @@ clinica-medica/
 
 ## Requisitos
 
-- **JDK 11 ou superior** (o código usa `String.isBlank()`, `String.strip()` e `InputStream.readNBytes`, disponíveis a partir do Java 11). O comando `javac` precisa estar no `PATH`; um JRE sozinho não compila.
+- **JDK 17 ou superior** e **Maven 3.9+** para executar localmente.
+- Um banco PostgreSQL. No Render, use a URL interna do banco; localmente, use uma instância PostgreSQL acessível.
 - Um navegador moderno. As fontes vêm do Google Fonts; sem internet o sistema funciona normalmente com fontes do sistema.
 
 ## Como executar
 
 ### Windows (recomendado)
 
-1. Instale o JDK 11+ e confirme com `javac -version` no terminal.
-2. Dê duplo clique em `run.bat` (ou execute `run.bat` no terminal, dentro da pasta do projeto). Ele compila o backend na pasta `out/` e inicia o servidor.
-3. Abra <http://localhost:8080> no navegador.
-4. Para encerrar, feche a janela ou pressione `Ctrl+C`.
+1. Instale o JDK 17+ e o Maven 3.9+.
+2. Configure `DATABASE_URL` com a URL JDBC ou URL PostgreSQL do seu banco.
+3. Dê duplo clique em `run.bat` (ou execute `run.bat` no terminal, dentro da pasta do projeto). Ele compila o backend e inicia o servidor.
+4. Abra <http://localhost:8080> no navegador.
+5. Para encerrar, feche a janela ou pressione `Ctrl+C`.
 
 ### Manualmente (Windows, Linux ou macOS)
 
-Na **raiz** do projeto (o servidor procura a pasta `frontend/` a partir do diretório atual):
+Na **raiz** do projeto, configure a conexão com o PostgreSQL e inicie com Maven.
+No Windows PowerShell:
+
+```powershell
+$env:DATABASE_URL = "jdbc:postgresql://localhost:5432/clinica"
+$env:DATABASE_USER = "seu_usuario"
+$env:DATABASE_PASSWORD = "sua_senha"
+mvn -DskipTests package
+java -jar target/clinica-vitallis-1.0.0.jar
+```
+
+No Linux ou macOS:
 
 ```bash
-# Linux/macOS
-mkdir -p out
-javac -encoding UTF-8 -d out $(find backend/src -name '*.java')
-java -cp out ApiServer
+export DATABASE_URL="jdbc:postgresql://localhost:5432/clinica"
+export DATABASE_USER="seu_usuario"
+export DATABASE_PASSWORD="sua_senha"
+mvn -DskipTests package
+java -jar target/clinica-vitallis-1.0.0.jar
 ```
 
-```bat
-:: Windows (cmd)
-mkdir out
-javac -encoding UTF-8 -d out backend\src\ApiServer.java backend\src\util\Seguranca.java backend\src\model\Usuario.java backend\src\model\Paciente.java backend\src\model\Consulta.java backend\src\repository\PacienteRepository.java backend\src\service\AutenticacaoService.java backend\src\service\PacienteService.java backend\src\service\AgendaService.java backend\src\controller\PacienteController.java
-java -cp out ApiServer
-```
+O servidor cria as tabelas `pacientes` e `consultas` na inicialização. `DATABASE_URL` aceita o formato JDBC (`jdbc:postgresql://...`) e os formatos `postgres://` ou `postgresql://` fornecidos pelo Render. Para URL JDBC, também é possível fornecer `DATABASE_USER` e `DATABASE_PASSWORD` separadamente.
 
 Depois acesse <http://localhost:8080>.
+
+### Configurar o banco no Render
+
+1. Crie um banco PostgreSQL no Render e mantenha-o na mesma região do serviço web.
+2. No painel do banco, copie a **Internal Database URL** (não a URL externa).
+3. No serviço web Java, abra **Environment** e adicione `DATABASE_URL` com essa URL interna. Não publique o valor em arquivos, commits ou mensagens.
+4. Confirme que o serviço usa o `Dockerfile` da raiz e faça o deploy. Na inicialização, o sistema cria as tabelas automaticamente.
+
+O banco precisa estar disponível para o serviço. Se a conexão não estiver configurada ou falhar, o servidor não inicia e registra o erro nos logs. Dados que existiam apenas em memória antes desta alteração não podem ser recuperados; a exclusão de um paciente remove suas consultas automaticamente.
 
 Por padrão o servidor só aceita conexões do próprio computador. Para abrir no celular ou em outro computador da rede local, defina `CLINICA_HOST=0.0.0.0` antes de iniciar (o tráfego é HTTP sem criptografia, então use só em rede confiável).
 
@@ -128,7 +151,7 @@ run.bat
 ```
 
 ```bash
-CLINICA_ADMIN_LOGIN=seu_login CLINICA_ADMIN_SENHA=sua_senha java -cp out ApiServer
+CLINICA_ADMIN_LOGIN=seu_login CLINICA_ADMIN_SENHA=sua_senha java -jar target/clinica-vitallis-1.0.0.jar
 ```
 
 ## API
@@ -159,14 +182,13 @@ Todas as rotas, exceto `/api/login` e `/api/logout`, exigem sessão válida (`40
 - O frontend renderiza dados com `textContent` (nunca `innerHTML`) para evitar XSS.
 - **Nunca publique** `.env`, senhas reais, tokens, chaves privadas ou credenciais. O `.gitignore` já ignora `.env` e arquivos compilados.
 
-**Limitações conhecidas (por ser demonstração):** tráfego em HTTP sem TLS, sem limite de tentativas de login no servidor (o bloqueio de 5 tentativas existe apenas na interface), um único usuário/perfil e dados apenas em memória.
+**Limitações conhecidas (por ser demonstração):** tráfego em HTTP sem TLS, sem limite de tentativas de login no servidor (o bloqueio de 5 tentativas existe apenas na interface), um único usuário/perfil e usuários/sessões apenas em memória. Dados pessoais de saúde exigem controles de segurança, privacidade, acesso e backup antes de qualquer uso real.
 
 ## Melhorias futuras
 
-- Banco de dados real
 - Autenticação mais robusta (HTTPS, limite de tentativas no servidor, múltiplos usuários)
 - Controle de permissões por perfil
 - Cancelamento de consultas
 - Testes automatizados
 - Documentação da API em formato OpenAPI
-- Deploy
+- Gestão de usuários e sessões persistentes

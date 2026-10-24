@@ -27,10 +27,10 @@ import repository.PacienteRepository;
 import service.AgendaService;
 import service.AutenticacaoService;
 import service.PacienteService;
+import util.Database;
 
 /**
- * Servidor HTTP (somente JDK): serve o front-end estático (pasta "frontend")
- * e a API REST em /api. Os dados ficam em memória.
+ * Servidor HTTP: serve o front-end estático, a API REST e conecta ao PostgreSQL.
  *
  * Execute a partir da raiz do projeto (veja run.bat), pois a pasta "frontend"
  * é procurada a partir do diretório atual.
@@ -44,7 +44,7 @@ public class ApiServer {
     private static final AutenticacaoService authService = new AutenticacaoService();
     private static final PacienteService pacienteService = new PacienteService(new PacienteRepository());
     private static final AgendaService agendaService = new AgendaService();
-    private static final PacienteController pacienteController = new PacienteController(pacienteService, agendaService);
+    private static final PacienteController pacienteController = new PacienteController(pacienteService);
 
     private static final Path FRONTEND = Paths.get("frontend").toAbsolutePath().normalize();
 
@@ -55,6 +55,7 @@ public class ApiServer {
     }
 
     public static void main(String[] args) throws Exception {
+        Database.inicializar();
         // Por padrão só aceita conexões desta máquina; defina CLINICA_HOST=0.0.0.0 para abrir na rede local.
         String host = System.getenv("CLINICA_HOST");
         if (host == null || host.isBlank()) host = "127.0.0.1";
