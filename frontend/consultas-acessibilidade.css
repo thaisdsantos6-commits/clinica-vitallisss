@@ -1,0 +1,15 @@
+/* Acessibilidade da tela de consultas e do fluxo por teclado */
+.skip-link{position:absolute; z-index:100; top:8px; left:8px; padding:10px 14px; transform:translateY(-160%); background:var(--surface); color:var(--ink); border:2px solid var(--focus); border-radius:8px; font-weight:700}
+.skip-link:focus{transform:translateY(0)}
+#consultas-agenda:focus{outline:3px solid var(--focus); outline-offset:4px; border-radius:6px}
+#v-consultas .dica{display:block; line-height:1.55}
+#v-consultas .input[aria-invalid="true"]{border-color:var(--danger); box-shadow:0 0 0 2px var(--danger-bg)}
+#v-consultas .btn,#v-consultas .icon-btn{min-height:44px}
+#v-consultas .icon-btn{min-width:44px}
+#v-consultas .consulta-acoes{row-gap:10px}
+#v-consultas .dia[role="group"]{scroll-margin-block:16px}
+#v-consultas .consulta[role="group"]{border-radius:8px}
+@media (forced-colors: active){
+  :focus-visible{outline:3px solid CanvasText !important; outline-offset:3px}
+  #v-consultas .input[aria-invalid="true"]{border:2px solid Mark !important}
+}
