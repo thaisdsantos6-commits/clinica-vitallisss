@@ -70,7 +70,7 @@ function icon(name, size = 20) {
   s.setAttribute('fill', 'none'); s.setAttribute('stroke', 'currentColor'); s.setAttribute('stroke-width', '1.8');
   s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round');
   s.setAttribute('aria-hidden', 'true'); s.setAttribute('class', 'ic');
-  s.innerHTML = ICONS[name];               // conteúdo constante e confiável
+  s.innerHTML = ICONS[name];
   return s;
 }
 $$('[data-icon]').forEach(el => el.replaceWith(icon(el.dataset.icon, Number(el.dataset.size) || 20)));
@@ -162,7 +162,7 @@ const ApiDemo = {
     await delay(60);
     if (demo.usuario?.papel === 'MEDICO') {
       return demo.consultas.filter(c => c.medico.toLowerCase() === demo.usuario.medico.toLowerCase())
-        .map(({ orcamentoCentavos, ...c }) => c);   // médico não recebe o orçamento
+        .map(({ orcamentoCentavos, ...c }) => c);
     }
     return demo.consultas.map(c => ({ ...c }));
   },
@@ -280,7 +280,7 @@ ApiDemo._semear();
    Front e API são servidos pela mesma origem (http://localhost:8080), então não há CORS.
    A sessão é um cookie HttpOnly emitido pelo servidor em /api/login: o JavaScript
    nunca o lê, o navegador apenas o devolve em cada chamada. ------------------------- */
-let aoExpirarSessao = null;     // definido na seção de login
+let aoExpirarSessao = null;
 async function chamarApi(caminho, opcoes = {}) {
   let resp;
   try {
@@ -297,7 +297,6 @@ async function chamarApi(caminho, opcoes = {}) {
   if (!resp.ok) {
     const mensagem = corpo && (corpo.error || corpo.mensagem) ? (corpo.error || corpo.mensagem) : 'Não foi possível concluir a operação.';
     if (resp.status === 401) {
-      // sessão do servidor expirou (a tela de login não conta: ali 401 = credenciais inválidas)
       if (caminho !== '/api/login' && sessao && aoExpirarSessao) aoExpirarSessao();
       throw new ErroSessao(mensagem);
     }
@@ -305,8 +304,6 @@ async function chamarApi(caminho, opcoes = {}) {
   }
   return corpo;
 }
-// O servidor devolve {id, paciente:{id,nome,cpf,convenio}, medico, dataHora, status}.
-// A interface trabalha com o formato achatado abaixo.
 const consultaDoServidor = c => ({
   id: c.id,
   pacienteId: c.paciente.id,
@@ -376,8 +373,8 @@ const ApiHttp = {
 const Api = CONFIG.MODO === 'api' ? ApiHttp : ApiDemo;
 
 /* =====================================================================
-   4. FORMATAÇÃO
-   ===================================================================== */
+    4. FORMATAÇÃO
+    ===================================================================== */
 const fmtCpf = d => `${d.slice(0,3)}.${d.slice(3,6)}.${d.slice(6,9)}-${d.slice(9,11)}`;
 const mascaraCpf = d => `${d.slice(0,3)}.•••.•••-${d.slice(9,11)}`;
 const fmtParcial = d => { let s = d.slice(0,3); if (d.length>3) s += '.'+d.slice(3,6); if (d.length>6) s += '.'+d.slice(6,9); if (d.length>9) s += '-'+d.slice(9,11); return s; };
@@ -401,17 +398,17 @@ function quando(dt) {
 }
 
 /* =====================================================================
-   5. NAVEGAÇÃO
-   ===================================================================== */
+    5. NAVEGAÇÃO
+    ===================================================================== */
 const VIEWS = {
-  inicio:    { titulo: () => `Bem-vindo, ${ehAdmin() ? sessao.login : (sessao.medico || sessao.login)}!`, sub: () => cap(fmtDiaLongo.format(new Date())), acao: { txt: 'Agendar consulta', admin: true, fazer: () => ir('consultas') } },
+  inicio:    { titulo: () => `Bem-vindo, ${ehAdmin() ? sessao.login : (sessao.medico || sessao.login)}!`, sub: () => cap(fmtDiaLongo.format(new Date())), acao: { txt: 'Agendar consulta', admin: true, fazer: () => abrirDialogo() } },
   pacientes: { titulo: () => 'Pacientes', sub: () => ehAdmin() ? 'Cadastre e consulte quem é atendido na clínica.' : 'Pacientes que você atende.', acao: { txt: 'Novo paciente', admin: true, fazer: () => abrirDialogo() } },
-  consultas: { titulo: () => ehAdmin() ? 'Consultas' : 'Minha agenda', sub: () => ehAdmin() ? 'Agende por médico, data e hora e acompanhe a agenda.' : 'Seus atendimentos, por dia e horário.', acao: null },
+  consultas: { titulo: () => ehAdmin() ? 'Consultas' : 'Minha agenda', sub: () => ehAdmin() ? 'Agende por médico, data e hora e acompanhe a agenda.' : 'Seus atendimentos, por dia e horário.', acao: { txt: 'Agendar consulta', admin: false, fazer: () => prepararFormConsulta() } },
   usuarios:  { titulo: () => 'Usuários', sub: () => 'Crie e gerencie os acessos de administradores e médicos.', acao: { txt: 'Novo usuário', admin: true, fazer: () => abrirUsuario() } }
 };
 const acaoDaView = v => { const a = VIEWS[v].acao; return a && (!a.admin || ehAdmin()) ? a : null; };
 function ir(v) {
-  if (v === 'usuarios' && !ehAdmin()) v = 'inicio';   // tela exclusiva do administrador
+  if (v === 'usuarios' && !ehAdmin()) v = 'inicio';
   viewAtual = v;
   $$('.view').forEach(s => s.hidden = s.id !== 'v-' + v);
   $$('.nav-btn[data-view]').forEach(b => b.hasAttribute('data-view') && (b.dataset.view === v ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current')));
@@ -576,6 +573,7 @@ function renderPacientes() {
       class: 'btn ghost',
       type: 'button',
       text: 'Detalhes',
+      'aria-label': `Ver detalhes do paciente ${p.nome}`,
       onclick: () => abrirDetalhesPaciente(p)
     });
 
@@ -583,6 +581,7 @@ function renderPacientes() {
       class: 'btn ghost',
       type: 'button',
       text: 'Editar',
+      'aria-label': `Editar cadastro do paciente ${p.nome}`,
       onclick: () => abrirDialogo(p)
     });
 
@@ -590,6 +589,7 @@ function renderPacientes() {
       class: 'btn ghost danger',
       type: 'button',
       text: 'Excluir',
+      'aria-label': `Excluir cadastro do paciente ${p.nome}`,
       onclick: () => excluirPaciente(p)
     });
 
@@ -613,7 +613,8 @@ function renderPacientes() {
 
   area.replaceChildren(
     h('div', { class: 'tabela-wrap' },
-      h('table', {},
+      h('table', { 'aria-label': 'Lista de pacientes cadastrados' },
+        h('caption', { class: 'sr', text: 'Lista de pacientes cadastrados' }),
         h('thead', {},
           h('tr', {},
             h('th', { scope: 'col', text: 'Paciente' }),
@@ -638,7 +639,7 @@ let pacienteDetalheAtual = null;
 
 function abrirDetalhesPaciente(p) {
   pacienteDetalheAtual = p;
-  $('#d-editar').hidden = !ehAdmin(); $('#d-excluir').hidden = !ehAdmin();   // médico só consulta
+  $('#d-editar').hidden = !ehAdmin(); $('#d-excluir').hidden = !ehAdmin();
   dNome.textContent = p.nome;
   dCpf.textContent = fmtCpf(p.cpf);
   dConvenio.textContent = p.convenio;
@@ -670,8 +671,8 @@ $('#d-excluir').addEventListener('click', async () => {
 });
 
 /* =====================================================================
-   8. CADASTRO DE PACIENTE
-   ===================================================================== */
+    8. CADASTRO DE PACIENTE
+    ===================================================================== */
 const dlg = $('#dlg-paciente'), formP = $('#form-paciente'), msgP = $('#msg-paciente'), inCpf = $('#p-cpf'), inNomeP = $('#p-nome');
 const btnFoto = $('#p-foto-botao'), inFoto = $('#p-foto-arquivo'), imgFoto = $('#p-foto-preview'), letraFoto = $('#p-foto-letra'), btnRemoverFoto = $('#p-foto-remover');
 const MAX_FOTO_MB = 8;
@@ -770,8 +771,8 @@ formP.addEventListener('submit', async e => {
 });
 
 /* =====================================================================
-   9. EXCLUSÃO DE PACIENTE
-   ===================================================================== */
+    9. EXCLUSÃO DE PACIENTE
+    ===================================================================== */
 async function excluirPaciente(p) {
   if (!confirm(`Excluir o cadastro de ${p.nome}?`)) return;
   try {
@@ -784,8 +785,8 @@ async function excluirPaciente(p) {
 }
 
 /* =====================================================================
-   10. AGENDAMENTO E REAGENDAMENTO DE CONSULTAS
-   ===================================================================== */
+    10. AGENDAMENTO E REAGENDAMENTO DE CONSULTAS
+    ===================================================================== */
 const selPac = $('#c-paciente'), inMed = $('#c-medico'), inData = $('#c-data'), inOrcamento = $('#c-orcamento'), msgC = $('#msg-consulta');
 function prepararFormConsulta() {
   const tem = pacientes.length > 0;
@@ -910,8 +911,8 @@ formR.addEventListener('submit', async e => {
 });
 
 /* =====================================================================
-   11. LOGIN, SESSÃO E BLOQUEIO
-   ===================================================================== */
+    11. LOGIN, SESSÃO E BLOQUEIO
+    ===================================================================== */
 const formLogin = $('#login-form'), inLogin = $('#login'), inSenha = $('#senha'), msgLogin = $('#login-msg'), btnLogin = $('#login-btn');
 let falhas = 0, bloqueioTimer = null;
 
@@ -936,7 +937,7 @@ function bloquear() {
 formLogin.addEventListener('submit', async e => {
   e.preventDefault();
   if (btnLogin.disabled) return;
-  const login = inLogin.value.trim(), senha = inSenha.value;   // a senha é enviada como digitada
+  const login = inLogin.value.trim(), senha = inSenha.value;
   inLogin.removeAttribute('aria-invalid'); inSenha.removeAttribute('aria-invalid');
   if (!login || !senha.trim()) {
     setMsg(msgLogin, 'Login e senha são obrigatórios.');
@@ -946,13 +947,13 @@ formLogin.addEventListener('submit', async e => {
   setMsg(msgLogin, ''); btnLogin.disabled = true; btnLogin.textContent = 'Entrando…';
   let usuario = null, erroRede = false;
   try { usuario = await Api.autenticar(login, senha); } catch { erroRede = true; }
-  inSenha.value = '';                                   // a senha nunca fica no campo depois do envio
+  inSenha.value = '';
   btnLogin.textContent = 'Entrar'; btnLogin.disabled = false;
   if (erroRede) { setMsg(msgLogin, 'Não foi possível conectar ao servidor. Tente novamente.'); return; }
   if (!usuario) {
     falhas++;
     if (falhas >= CONFIG.MAX_TENTATIVAS) bloquear();
-    else setMsg(msgLogin, 'Login ou senha inválidos.');   // mensagem genérica: não revela qual dos dois errou
+    else setMsg(msgLogin, 'Login ou senha inválidos.');
     inSenha.focus(); return;
   }
   falhas = 0; inLogin.value = '';
@@ -965,7 +966,6 @@ async function entrar(usuario) {
   $('#user-login').textContent = sessao.login;
   $('#user-papel').textContent = ehAdmin() ? 'Administrador' : 'Médico';
   $('#user-avatar').textContent = inicial(sessao.login);
-  // perfil: o médico não vê usuários, nem o formulário de agendamento
   $('#nav-usuarios').hidden = !ehAdmin();
   $('#painel-agendar').hidden = !ehAdmin();
   $('#consultas-grid').classList.toggle('so-agenda', !ehAdmin());
@@ -976,7 +976,7 @@ async function entrar(usuario) {
 }
 
 function sair(aviso) {
-  if (CONFIG.MODO === 'api' && sessao) Api.sair();   // não bloqueia a saída caso o servidor não responda
+  if (CONFIG.MODO === 'api' && sessao) Api.sair();
   clearTimeout(inatividade); sessao = null; pacientes = []; consultas = []; usuarios = [];
   $$('dialog[open]').forEach(d => d.close());
   ['#proxima-corpo', '#resumo', '#inicio-agenda', '#pacientes-area', '#consultas-agenda', '#usuarios-area'].forEach(s => $(s).replaceChildren());
@@ -994,13 +994,11 @@ function armarInatividade() {
   inatividade = setTimeout(() => sair('Sessão encerrada por inatividade. Entre novamente.'), CONFIG.INATIVIDADE_MS);
 }
 ['pointerdown', 'keydown', 'scroll', 'touchstart'].forEach(ev => addEventListener(ev, armarInatividade, { passive: true, capture: true }));
-
-// o servidor encerrou a sessão (expirou): volta para a tela de login
 aoExpirarSessao = () => sair('Sessão expirada. Entre novamente.');
 
 /* =====================================================================
-   12. USUÁRIOS (somente administrador)
-   ===================================================================== */
+    12. USUÁRIOS (somente administrador)
+    ===================================================================== */
 const dlgU = $('#dlg-usuario'), formU = $('#form-usuario'), msgU = $('#msg-usuario');
 const uLogin = $('#u-login'), uPapel = $('#u-papel'), uMedico = $('#u-medico'), uSenha = $('#u-senha'), uAtivo = $('#u-ativo');
 let usuarioEditando = null;
@@ -1019,10 +1017,11 @@ function renderUsuarios() {
       h('td', { 'data-label': 'Médico na agenda', text: u.medico || '—' }),
       h('td', { 'data-label': 'Status' }, h('span', { class: 'chip' + (u.ativo ? '' : ' inativo'), text: u.ativo ? 'Ativo' : 'Inativo' })),
       h('td', { 'data-label': 'Ações' }, h('div', { class: 'acoes-inline' },
-        h('button', { class: 'btn ghost', type: 'button', text: 'Editar', onclick: () => abrirUsuario(u) }),
-        !eu && h('button', { class: 'btn ghost danger', type: 'button', text: 'Excluir', onclick: () => excluirUsuario(u) }))));
+        h('button', { class: 'btn ghost', type: 'button', text: 'Editar', 'aria-label': `Editar usuário ${u.login}`, onclick: () => abrirUsuario(u) }),
+        !eu && h('button', { class: 'btn ghost danger', type: 'button', text: 'Excluir', 'aria-label': `Excluir usuário ${u.login}`, onclick: () => excluirUsuario(u) }))));
   });
-  area.replaceChildren(h('div', { class: 'tabela-wrap' }, h('table', {},
+  area.replaceChildren(h('div', { class: 'tabela-wrap' }, h('table', { 'aria-label': 'Lista de usuários do sistema' },
+    h('caption', { class: 'sr', text: 'Lista de usuários do sistema' }),
     h('thead', {}, h('tr', {}, ['Usuário', 'Perfil', 'Médico na agenda', 'Status', 'Ações'].map(t => h('th', { scope: 'col', text: t })))),
     h('tbody', {}, linhas))));
   cont.textContent = `${usuarios.length} ${plural(usuarios.length, 'usuário', 'usuários')}`;
@@ -1090,8 +1089,658 @@ async function excluirUsuario(u) {
 }
 
 /* =====================================================================
-   13. INICIALIZAÇÃO DA APLICAÇÃO
-   ===================================================================== */
+    13. INICIALIZAÇÃO DA APLICAÇÃO
+    ===================================================================== */
 $('#demo-note').hidden = CONFIG.MODO !== 'demo';
 inLogin.focus();
 })();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+n

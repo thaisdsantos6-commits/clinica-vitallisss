@@ -175,8 +175,11 @@
 
     <!-- Usuários (somente administrador) -->
     <section class="view" id="v-usuarios" hidden aria-labelledby="titulo">
-      <div id="usuarios-area"></div>
-      <p class="contagem" id="usuarios-contagem" aria-live="polite"></p>
+      <div class="usuarios-header" aria-live="polite">
+        <h2 class="sr" id="usuarios-titulo">Gerenciamento de usuários</h2>
+        <p class="contagem" id="usuarios-contagem" aria-live="polite"></p>
+      </div>
+      <div id="usuarios-area" role="region" aria-label="Lista de usuários do sistema"></div>
     </section>
   </main>
 </div>
@@ -223,7 +226,7 @@
 </dialog>
 
 <!-- Cadastro e edição de usuário -->
-<dialog id="dlg-usuario" aria-labelledby="u-titulo">
+<dialog id="dlg-usuario" aria-labelledby="u-titulo" aria-describedby="u-descricao u-senha-dica">
   <form class="dlg form" id="form-usuario" novalidate>
     <div>
       <h2 id="u-titulo">Novo usuário</h2>
@@ -231,27 +234,32 @@
     </div>
     <div class="field">
       <label for="u-login">Login</label>
-      <input class="input" id="u-login" type="text" maxlength="40" autocomplete="off" autocapitalize="none" spellcheck="false" required>
+      <input class="input" id="u-login" type="text" maxlength="40" autocomplete="off" autocapitalize="none" spellcheck="false" required aria-describedby="u-login-ajuda">
+      <small class="dica" id="u-login-ajuda">Use apenas letras, números e os símbolos ponto, hífen, sublinhado ou @.</small>
     </div>
     <div class="field">
       <label for="u-papel">Perfil</label>
-      <select class="input" id="u-papel">
+      <select class="input" id="u-papel" aria-describedby="u-papel-ajuda">
         <option value="MEDICO">Médico: vê só a própria agenda e os pacientes que atende</option>
         <option value="ADMIN">Administrador: acesso total</option>
       </select>
+      <small class="dica" id="u-papel-ajuda">O perfil define quais recursos ficam disponíveis para o usuário.</small>
     </div>
     <div class="field" id="u-medico-campo">
       <label for="u-medico">Nome do médico na agenda</label>
-      <input class="input" id="u-medico" type="text" maxlength="80" autocomplete="off" placeholder="Ex.: Dra. Camila Rocha">
-      <small class="dica">Escreva exatamente como o nome aparece nas consultas: é por ele que o sistema encontra a agenda deste médico.</small>
+      <input class="input" id="u-medico" type="text" maxlength="80" autocomplete="off" placeholder="Ex.: Dra. Camila Rocha" aria-describedby="u-medico-ajuda">
+      <small class="dica" id="u-medico-ajuda">Escreva exatamente como o nome aparece nas consultas: é por ele que o sistema encontra a agenda deste médico.</small>
     </div>
     <div class="field">
       <label for="u-senha" id="u-senha-rotulo">Senha</label>
-      <input class="input" id="u-senha" type="password" maxlength="72" autocomplete="new-password">
+      <input class="input" id="u-senha" type="password" maxlength="72" autocomplete="new-password" aria-describedby="u-senha-dica">
       <small class="dica" id="u-senha-dica">Mínimo de 8 caracteres.</small>
     </div>
-    <label class="check" id="u-ativo-campo"><input type="checkbox" id="u-ativo" checked><span>Usuário ativo (pode entrar no sistema)</span></label>
-    <p class="msg" id="msg-usuario" role="alert"></p>
+    <label class="check" id="u-ativo-campo" for="u-ativo">
+      <input type="checkbox" id="u-ativo" checked>
+      <span>Usuário ativo (pode entrar no sistema)</span>
+    </label>
+    <p class="msg" id="msg-usuario" role="alert" aria-live="assertive" aria-atomic="true"></p>
     <div class="dlg-acoes">
       <button class="btn ghost" type="button" id="u-cancelar">Cancelar</button>
       <button class="btn primary" type="submit" id="u-salvar">Criar usuário</button>

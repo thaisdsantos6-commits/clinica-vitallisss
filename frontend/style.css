@@ -92,10 +92,10 @@ svg.ic{flex:none; display:block}
 .pw{position:relative}
 .pw .input{padding-right:52px}
 .pw .icon-btn{position:absolute; right:4px; top:3px; width:40px; height:40px; border:0}
-.msg{padding:10px 12px; border-radius:10px; font-size:14px; font-weight:500}
+.msg{padding:10px 12px; border-radius:10px; font-size:14px; font-weight:500; border-left:4px solid transparent; line-height:1.45}
 .msg:empty{display:none}
-.msg[data-tipo="erro"]{background:var(--danger-bg); color:var(--danger)}
-.msg[data-tipo="info"]{background:var(--surface-2); color:var(--ink)}
+.msg[data-tipo="erro"]{background:var(--danger-bg); color:var(--danger); border-left-color:var(--danger)}
+.msg[data-tipo="info"]{background:var(--surface-2); color:var(--ink); border-left-color:var(--brand)}
 .form{display:grid; gap:16px}
 fieldset{border:0; padding:0; margin:0; min-width:0}
 fieldset:disabled{opacity:.55}
@@ -226,7 +226,7 @@ td{padding:14px 20px; border-top:1px solid var(--line); vertical-align:middle}
 .painel h2{font:400 24px/1.2 var(--f-display); margin-bottom:18px}
 .aviso{display:grid; gap:10px; justify-items:start; margin-bottom:16px; color:var(--ink-2); font-size:14.5px}
 select.input{appearance:none; -webkit-appearance:none; padding-right:40px;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2367857A' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2367857A' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat:no-repeat; background-position:right 14px center}
 
 /* Diálogo */
@@ -328,7 +328,7 @@ dialog[open]{animation:sobe .22s ease-out}
 
 /* ============ Perfis e usuários ============ */
 .consultas-grid.so-agenda{grid-template-columns:minmax(0,1fr)}
-.dica{color:var(--ink-2); font-size:13px; font-weight:400}
-.check{display:flex; align-items:center; gap:10px; font-size:14.5px; cursor:pointer}
+.dica{color:var(--ink-2); font-size:13px; font-weight:400; line-height:1.5}
+.check{display:flex; align-items:center; gap:10px; font-size:14.5px; cursor:pointer; padding:4px 0}
 .check input{width:18px; height:18px; accent-color:var(--brand)}
 .chip.inativo{background:var(--danger-bg); color:var(--danger)}
