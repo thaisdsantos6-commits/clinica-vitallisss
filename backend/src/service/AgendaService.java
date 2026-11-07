@@ -1,6 +1,8 @@
 package service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import model.Consulta;
@@ -11,6 +13,9 @@ import util.DatabaseException;
 /** Regras de negócio da agenda de consultas. Toda validação é feita aqui, independentemente do front-end. */
 public class AgendaService {
     public static final int MEDICO_MAX = 80;
+    public static final LocalTime HORARIO_INICIO = LocalTime.of(8, 0);
+    public static final LocalTime HORARIO_FIM = LocalTime.of(18, 0);
+    public static final LocalDate DATA_LIMITE = LocalDate.of(2030, 12, 31);
 
     private final ConsultaRepository repository;
 
@@ -29,7 +34,7 @@ public class AgendaService {
     public synchronized Consulta agendar(Paciente paciente, String medico, LocalDateTime dataHora, Long orcamentoCentavos) {
         if (paciente == null) throw new IllegalArgumentException("Paciente inválido.");
         medico = validarMedico(medico);
-        dataHora = validarDataFutura(dataHora, "A data da consulta deve ser no futuro.");
+        dataHora = validarDataHora(dataHora, "A data da consulta deve ser no futuro.");
         validarHorarioLivre(medico, dataHora, -1);
         validarOrcamento(orcamentoCentavos);
 
@@ -50,7 +55,7 @@ public class AgendaService {
         Consulta consulta = buscarPorId(id);
         if (consulta == null) return null;
 
-        novaDataHora = validarDataFutura(novaDataHora, "A nova data deve ser no futuro.");
+        novaDataHora = validarDataHora(novaDataHora, "A nova data deve ser no futuro.");
         validarHorarioLivre(consulta.getMedico(), novaDataHora, id);
         try {
             return repository.reagendar(id, novaDataHora);
@@ -106,10 +111,17 @@ public class AgendaService {
         return medico;
     }
 
-    /** Exige data/hora informada e no futuro. Trunca para minutos (a agenda trabalha em minutos). */
-    private static LocalDateTime validarDataFutura(LocalDateTime dataHora, String mensagem) {
+    /** Exige data futura, até 31/12/2030, e horário entre 08:00 e 18:00. */
+    private static LocalDateTime validarDataHora(LocalDateTime dataHora, String mensagemFuturo) {
         if (dataHora == null) throw new IllegalArgumentException("Informe a data e a hora da consulta.");
-        if (dataHora.isBefore(LocalDateTime.now())) throw new IllegalArgumentException(mensagem);
+        if (dataHora.isBefore(LocalDateTime.now())) throw new IllegalArgumentException(mensagemFuturo);
+        if (dataHora.toLocalDate().isAfter(DATA_LIMITE)) {
+            throw new IllegalArgumentException("A data da consulta deve ser até 31/12/2030.");
+        }
+        LocalTime hora = dataHora.toLocalTime();
+        if (hora.isBefore(HORARIO_INICIO) || hora.isAfter(HORARIO_FIM)) {
+            throw new IllegalArgumentException("O horário da consulta deve estar entre 08:00 e 18:00.");
+        }
         return dataHora.truncatedTo(ChronoUnit.MINUTES);
     }
 
