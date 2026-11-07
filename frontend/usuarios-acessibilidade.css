@@ -1,0 +1,78 @@
+/* Ajustes de acessibilidade para a tela de gerenciamento de usuários */
+
+#v-usuarios .input,
+#v-usuarios select,
+#v-usuarios button,
+#dlg-usuario .input,
+#dlg-usuario select,
+#dlg-usuario button {
+  min-height: 44px;
+}
+
+#v-usuarios .btn,
+#dlg-usuario .btn,
+#v-usuarios .icon-btn,
+#dlg-usuario .icon-btn {
+  min-width: 44px;
+}
+
+#v-usuarios .input[aria-invalid="true"],
+#dlg-usuario .input[aria-invalid="true"],
+#dlg-usuario select[aria-invalid="true"] {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 2px var(--danger-bg);
+}
+
+#v-usuarios .usuario-card,
+#v-usuarios .usuario-item,
+#v-usuarios li,
+#usuarios-area > * {
+  border-radius: 10px;
+}
+
+#v-usuarios [role="listitem"]:focus-within,
+#usuarios-area > *:focus-within {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+#dlg-usuario .dlg {
+  gap: 16px;
+}
+
+#dlg-usuario .field small,
+#dlg-usuario .dica,
+#dlg-usuario .sub {
+  line-height: 1.5;
+}
+
+#dlg-usuario .check {
+  min-height: 44px;
+  align-items: center;
+}
+
+#dlg-usuario .check input:focus-visible + span {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+#usuarios-area:focus,
+#dlg-usuario:focus {
+  outline: none;
+}
+
+@media (forced-colors: active) {
+  #v-usuarios .input[aria-invalid="true"],
+  #dlg-usuario .input[aria-invalid="true"],
+  #dlg-usuario select[aria-invalid="true"] {
+    border: 2px solid Mark !important;
+  }
+
+  #v-usuarios [role="listitem"]:focus-within,
+  #usuarios-area > *:focus-within,
+  #dlg-usuario .check input:focus-visible + span {
+    outline: 3px solid CanvasText !important;
+    outline-offset: 3px;
+  }
+}
