@@ -11,6 +11,7 @@ import util.DatabaseException;
 /** Regras de negócio da agenda de consultas. Toda validação é feita aqui, independentemente do front-end. */
 public class AgendaService {
     public static final int MEDICO_MAX = 80;
+    public static final int ANO_MAXIMO_AGENDAMENTO = 2027;
 
     private final ConsultaRepository repository;
 
@@ -106,10 +107,13 @@ public class AgendaService {
         return medico;
     }
 
-    /** Exige data/hora informada e no futuro. Trunca para minutos (a agenda trabalha em minutos). */
+    /** Exige data/hora informada e no futuro, limitada ao ano de 2027. Trunca para minutos. */
     private static LocalDateTime validarDataFutura(LocalDateTime dataHora, String mensagem) {
         if (dataHora == null) throw new IllegalArgumentException("Informe a data e a hora da consulta.");
         if (dataHora.isBefore(LocalDateTime.now())) throw new IllegalArgumentException(mensagem);
+        if (dataHora.getYear() > ANO_MAXIMO_AGENDAMENTO) {
+            throw new IllegalArgumentException("Só é possível agendar consultas até 31/12/2027.");
+        }
         return dataHora.truncatedTo(ChronoUnit.MINUTES);
     }
 
