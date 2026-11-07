@@ -62,6 +62,14 @@ public class AgendaService {
         }
     }
 
+    /** Cancela uma consulta existente. Retorna null se a consulta não existir. */
+    public synchronized Consulta cancelar(int id) {
+        Consulta consulta = buscarPorId(id);
+        if (consulta == null) return null;
+        if ("CANCELADA".equalsIgnoreCase(consulta.getStatus())) return consulta;
+        return repository.cancelar(id);
+    }
+
     /** Atualiza ou remove o orçamento de uma consulta. Retorna null se a consulta não existir. */
     public synchronized Consulta atualizarOrcamento(int id, Long orcamentoCentavos) {
         if (buscarPorId(id) == null) return null;
@@ -120,3 +128,4 @@ public class AgendaService {
         }
     }
 }
+

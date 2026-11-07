@@ -58,7 +58,7 @@ public class ConsultaRepository {
     public List<Consulta> listarTodas() {
         List<Consulta> consultas = new ArrayList<>();
         try (Connection conexao = Database.conectar();
-             PreparedStatement statement = conexao.prepareStatement(SELECT_CONSULTA + "ORDER BY c.id");
+             PreparedStatement statement = conexao.prepareStatement(SELECT_CONSULTA + "WHERE c.status = 'AGENDADA' ORDER BY c.id");
              ResultSet resultado = statement.executeQuery()) {
             while (resultado.next()) consultas.add(mapear(resultado));
             return consultas;
@@ -96,6 +96,18 @@ public class ConsultaRepository {
         }
     }
 
+    public Consulta cancelar(int id) {
+        try (Connection conexao = Database.conectar();
+             PreparedStatement statement = conexao.prepareStatement(
+                     "UPDATE consultas SET status = 'CANCELADA' WHERE id = ?")) {
+            statement.setInt(1, id);
+            if (statement.executeUpdate() == 0) return null;
+            return buscarPorId(id);
+        } catch (SQLException e) {
+            throw erroBanco("Não foi possível cancelar a consulta.", e);
+        }
+    }
+
     public Consulta atualizarOrcamento(int id, Long orcamentoCentavos) {
         try (Connection conexao = Database.conectar();
              PreparedStatement statement = conexao.prepareStatement(
@@ -122,7 +134,7 @@ public class ConsultaRepository {
     }
 
     public boolean existeHorario(String medico, LocalDateTime dataHora, int ignorarId) {
-        String sql = "SELECT 1 FROM consultas WHERE LOWER(medico) = LOWER(?) AND data_hora = ? AND id <> ?";
+        String sql = "SELECT 1 FROM consultas WHERE LOWER(medico) = LOWER(?) AND data_hora = ? AND id <> ? AND status = 'AGENDADA'";
         try (Connection conexao = Database.conectar();
              PreparedStatement statement = conexao.prepareStatement(sql)) {
             statement.setString(1, medico);
@@ -160,3 +172,5 @@ public class ConsultaRepository {
         return new DatabaseException(mensagem, e.getSQLState(), e);
     }
 }
+
+

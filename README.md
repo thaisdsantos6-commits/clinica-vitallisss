@@ -2,7 +2,7 @@
 
 ## Descrição
 
-Sistema de gerenciamento de clínica médica (Centro de Saúde Vitalis), desenvolvido para demonstrar conhecimentos de desenvolvimento web, backend, frontend, organização em camadas (MVC), autenticação, cadastro de pacientes e agendamento de consultas.
+Sistema de gerenciamento de clínica médica (Centro de Saúde Vitalis), desenvolvido para demonstrar conhecimentos de desenvolvimento web, backend, frontend, organização em camadas (MVC), autenticação, banco de dados e API REST.
 
 O backend em Java também serve o frontend e usa PostgreSQL para persistir pacientes e consultas.
 
@@ -27,6 +27,7 @@ O backend em Java também serve o frontend e usa PostgreSQL para persistir pacie
 - **Exclusão de pacientes** (as consultas do paciente excluído também são removidas)
 - **Agendamento de consultas** (paciente, médico, data e hora), com orçamento total opcional em reais
 - **Edição e remoção do orçamento** pela agenda, com valores exibidos em BRL
+- **Cancelamento de consultas** pela agenda
 - **Reagendamento** e **listagem de consultas**, agrupadas por dia
 - **Dashboard** (tela inicial) com a próxima consulta, totais e próximos atendimentos
 - **Validação de dados** no frontend (retorno rápido) e **novamente no backend** (a regra que vale)
@@ -45,42 +46,6 @@ O backend em Java também serve o frontend e usa PostgreSQL para persistir pacie
 | `backend/src/ApiServer.java` | Ponto de entrada: rotas `/api` e arquivos do frontend |
 | `frontend/` | Interface web: `index.html`, `style.css`, `app.js` |
 | `docs/` | Documentação adicional (`API.md`) |
-
-```text
-clinica-medica/
-├── backend/
-│   ├── src/
-│   │   ├── controller/
-│   │   │   └── PacienteController.java
-│   │   ├── model/
-│   │   │   ├── Paciente.java
-│   │   │   ├── Consulta.java
-│   │   │   └── Usuario.java
-│   │   ├── repository/
-│   │   │   ├── PacienteRepository.java
-│   │   │   └── ConsultaRepository.java
-│   │   ├── service/
-│   │   │   ├── PacienteService.java
-│   │   │   ├── AgendaService.java
-│   │   │   └── AutenticacaoService.java
-│   │   ├── util/
-│   │   │   ├── Database.java
-│   │   │   ├── DatabaseException.java
-│   │   │   └── Seguranca.java
-│   │   └── ApiServer.java
-│   └── README.md
-├── docs/
-│   └── API.md
-├── frontend/
-│   ├── index.html
-│   ├── app.js
-│   └── style.css
-├── pom.xml
-├── .gitattributes
-├── .gitignore
-├── README.md
-└── run.bat
-```
 
 ## Requisitos
 
@@ -121,20 +86,9 @@ mvn -DskipTests package
 java -jar target/clinica-vitallis-1.0.0.jar
 ```
 
-O servidor cria as tabelas `pacientes` e `consultas` na inicialização. `DATABASE_URL` aceita o formato JDBC (`jdbc:postgresql://...`) e os formatos `postgres://` ou `postgresql://` fornecidos pelo Render. Para URL JDBC, também é possível fornecer `DATABASE_USER` e `DATABASE_PASSWORD` separadamente.
+O servidor cria as tabelas `pacientes` e `consultas` na inicialização. `DATABASE_URL` aceita o formato JDBC (`jdbc:postgresql://...`) e os formatos `postgres://` ou `postgresql://` fornecidos pelo Render.
 
 Depois acesse <http://localhost:8080>.
-
-### Configurar o banco no Render
-
-1. Crie um banco PostgreSQL no Render e mantenha-o na mesma região do serviço web.
-2. No painel do banco, copie a **Internal Database URL** (não a URL externa).
-3. No serviço web Java, abra **Environment** e adicione `DATABASE_URL` com essa URL interna. Não publique o valor em arquivos, commits ou mensagens.
-4. Confirme que o serviço usa o `Dockerfile` da raiz e faça o deploy. Na inicialização, o sistema cria as tabelas automaticamente.
-
-O banco precisa estar disponível para o serviço. Se a conexão não estiver configurada ou falhar, o servidor não inicia e registra o erro nos logs. Dados que existiam apenas em memória antes desta alteração não podem ser recuperados; a exclusão de um paciente remove suas consultas automaticamente.
-
-Por padrão o servidor só aceita conexões do próprio computador. Para abrir no celular ou em outro computador da rede local, defina `CLINICA_HOST=0.0.0.0` antes de iniciar (o tráfego é HTTP sem criptografia, então use só em rede confiável).
 
 ### Credencial de demonstração
 
@@ -142,21 +96,9 @@ Por padrão o servidor só aceita conexões do próprio computador. Para abrir n
 |---|---|
 | `Vitallis` | `Vitallis2026` |
 
-É uma credencial **somente de demonstração**. Para usar outra, defina as variáveis de ambiente antes de iniciar o servidor:
-
-```bat
-set CLINICA_ADMIN_LOGIN=seu_login
-set CLINICA_ADMIN_SENHA=sua_senha
-run.bat
-```
-
-```bash
-CLINICA_ADMIN_LOGIN=seu_login CLINICA_ADMIN_SENHA=sua_senha java -jar target/clinica-vitallis-1.0.0.jar
-```
-
 ## API
 
-Resumo dos endpoints (detalhes, corpos e respostas em [`docs/API.md`](docs/API.md)):
+Resumo dos endpoints (detalhes, corpos e respostas em [`API.md`](API.md)):
 
 | Método | URL | Finalidade |
 |---|---|---|
@@ -169,6 +111,7 @@ Resumo dos endpoints (detalhes, corpos e respostas em [`docs/API.md`](docs/API.m
 | `GET` | `/api/appointments` | Lista consultas |
 | `POST` | `/api/appointments` | Agenda consulta (aceita `orcamentoCentavos` opcional, inteiro em centavos) |
 | `PUT` | `/api/appointments/{id}` | Reagenda consulta |
+| `DELETE` | `/api/appointments/{id}` | Cancela consulta |
 | `PUT` | `/api/appointments/{id}/budget` | Atualiza ou remove o orçamento (`orcamentoCentavos`; `null` remove) |
 
 Todas as rotas, exceto `/api/login` e `/api/logout`, exigem sessão válida (`401` caso contrário).
@@ -180,15 +123,13 @@ Todas as rotas, exceto `/api/login` e `/api/logout`, exigem sessão válida (`40
 - A sessão é um token aleatório de 256 bits em cookie `HttpOnly` + `SameSite=Strict`; expira após 10 minutos sem uso.
 - Todas as validações do frontend são repetidas no backend.
 - O frontend renderiza dados com `textContent` (nunca `innerHTML`) para evitar XSS.
-- **Nunca publique** `.env`, senhas reais, tokens, chaves privadas ou credenciais. O `.gitignore` já ignora `.env` e arquivos compilados.
-
-**Limitações conhecidas (por ser demonstração):** tráfego em HTTP sem TLS, sem limite de tentativas de login no servidor (o bloqueio de 5 tentativas existe apenas na interface), um único usuário/perfil e usuários/sessões apenas em memória. Dados pessoais de saúde exigem controles de segurança, privacidade, acesso e backup antes de qualquer uso real.
+- **Nunca publique** `.env`, senhas reais, tokens, chaves privadas ou credenciais.
 
 ## Melhorias futuras
 
 - Autenticação mais robusta (HTTPS, limite de tentativas no servidor, múltiplos usuários)
 - Controle de permissões por perfil
-- Cancelamento de consultas
 - Testes automatizados
 - Documentação da API em formato OpenAPI
 - Gestão de usuários e sessões persistentes
+

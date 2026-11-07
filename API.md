@@ -94,6 +94,11 @@ Enviado: `{"dataHora": "2026-10-09T10:00"}`
 
 Resposta `200`: a consulta atualizada. Erros: `400` (data inválida, no passado ou conflito de horário do médico), `404` (consulta inexistente).
 
+### `DELETE /api/appointments/{id}` — cancelar
+
+Resposta `200`: a consulta com `status: "CANCELADA"`.
+Erros: `404` (consulta inexistente).
+
 ### `PUT /api/appointments/{id}/budget` — orçamento
 
 Enviado: `{"orcamentoCentavos": 15000}` para definir ou `{"orcamentoCentavos": null}` para remover.
@@ -105,3 +110,4 @@ Resposta `200`: a consulta atualizada. Erros: `400` (campo ausente, valor negati
 ## Arquivos estáticos
 
 `GET /` e `GET /{arquivo}` servem a pasta `frontend/` (`index.html`, `app.js`, `style.css`). Caminhos fora dessa pasta retornam `404`.
+

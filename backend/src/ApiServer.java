@@ -265,6 +265,17 @@ public class ApiServer {
             return;
         }
 
+        if ("DELETE".equalsIgnoreCase(method) && path.matches("/api/appointments/\\d{1,9}")) {
+            int id = idDoCaminho(path);
+            Consulta consulta = agendaService.cancelar(id);
+            if (consulta == null) {
+                sendError(ex, 404, "Consulta não encontrada.");
+                return;
+            }
+            sendJson(ex, 200, appointmentJson(consulta, true));
+            return;
+        }
+
         if ("PUT".equalsIgnoreCase(method) && path.matches("/api/appointments/\\d{1,9}")) {
             int id = idDoCaminho(path);
             Map<String, String> corpo = lerJson(ex);
@@ -371,7 +382,7 @@ public class ApiServer {
         }
     }
 
-    // ------------------------------------------------------------ autenticação
+    // ------------------------------------------------------------------ autenticação
 
     /** Exige sessão válida (cookie). Devolve o usuário logado; se não houver, responde 401 e devolve null. */
     private static Usuario usuarioLogado(HttpExchange ex) throws IOException {
@@ -647,3 +658,4 @@ public class ApiServer {
         return "application/octet-stream";
     }
 }
+
