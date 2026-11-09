@@ -31,6 +31,7 @@ O backend em Java também serve o frontend e usa PostgreSQL para persistir pacie
 - **Dashboard** (tela inicial) com a próxima consulta, totais e próximos atendimentos
 - **Validação de dados** no frontend (retorno rápido) e **novamente no backend** (a regra que vale)
 - Tema claro/escuro
+- **Painel de acessibilidade** (botão flutuante): tamanho do texto, contraste alto, modo noturno, modo de leitura, destaque de links e botões, fonte de fácil leitura, espaçamento de letras e linhas, foco reforçado e pausa de animações, com preferências salvas no navegador
 
 ## Estrutura
 
@@ -43,7 +44,7 @@ O backend em Java também serve o frontend e usa PostgreSQL para persistir pacie
 | `backend/src/service` | Regras de negócio e validações: `PacienteService`, `AgendaService`, `AutenticacaoService` |
 | `backend/src/util` | Funções auxiliares: `Seguranca` (hash de senha e tokens) |
 | `backend/src/ApiServer.java` | Ponto de entrada: rotas `/api` e arquivos do frontend |
-| `frontend/` | Interface web: `index.html`, `style.css`, `app.js` |
+| `frontend/` | Interface web: `index.html`, `style.css`, `app.js`, `acessibilidade.css`, `acessibilidade.js` |
 | `docs/` | Documentação adicional (`API.md`) |
 
 ```text
@@ -153,6 +154,28 @@ run.bat
 ```bash
 CLINICA_ADMIN_LOGIN=seu_login CLINICA_ADMIN_SENHA=sua_senha java -jar target/clinica-vitallis-1.0.0.jar
 ```
+
+## Acessibilidade
+
+O painel de acessibilidade é um módulo independente: `frontend/acessibilidade.css` + `frontend/acessibilidade.js`. Para usá-lo em outra página, basta incluir os dois no `<head>` (o CSS depois do CSS principal). O JavaScript cria sozinho o botão, o painel e os atalhos de teclado.
+
+| Recurso | Como funciona |
+|---|---|
+| Tamanho do texto | 87,5% a 200% da fonte do navegador (o CSS usa `rem`, então tudo acompanha) |
+| Contraste alto | Preto com amarelo; junto com o modo de leitura, preto sobre branco |
+| Modo noturno | Usa o mesmo `data-theme` do botão de tema do app; os dois ficam sincronizados |
+| Modo de leitura | Fundo claro, linhas mais soltas e sem enfeites (desliga o modo noturno) |
+| Destacar links e botões | Sublinha links e contorna botões |
+| Fonte de fácil leitura | Atkinson Hyperlegible (carregada só quando ativada), com Verdana como reserva |
+| Espaço entre letras e linhas | Normal, médio ou grande (o grande segue os valores do critério WCAG 1.4.12) |
+| Foco reforçado / pausar animações | Contorno maior no Tab; interrompe movimentos |
+| Teclado | Atalhos "Pular para o conteúdo principal" e "Abrir opções de acessibilidade" (1º e 2º Tab); `Esc` fecha o painel |
+
+As escolhas ficam em `localStorage` (chave `vitalis:acessibilidade:v1`), cada recurso pode ser desligado sozinho e **Redefinir tudo** apaga tudo. Valores inválidos no armazenamento são ignorados. O módulo também garante `alt` em imagens e nome em campos criados por JavaScript.
+
+**Ajustes de base feitos junto:** fontes em `rem` (visual idêntico em 100%), borda dos campos com contraste 3:1, texto mínimo de 14 px, agenda sem espremer o nome do paciente e correções de reflow para telas estreitas com fonte grande.
+
+Verificado com Playwright (Chromium) e axe-core (WCAG 2.0/2.1/2.2 A e AA): zero violações nas telas, diálogos e modos, com o painel aberto e fechado. Teste com leitores de tela reais (NVDA, VoiceOver, TalkBack) ainda é recomendado antes de publicar.
 
 ## API
 
