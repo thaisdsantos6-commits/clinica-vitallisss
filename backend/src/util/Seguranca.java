@@ -49,6 +49,21 @@ public final class Seguranca {
         }
     }
 
+    /** Hash SHA-256 (hexadecimal) do token de sessão: é o que fica gravado no banco. */
+    public static String hashToken(String token) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(token.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(digest.length * 2);
+            for (byte b : digest) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 indisponível no Java.", e);
+        }
+    }
+
     /** Token aleatório (256 bits, em hexadecimal) para identificar uma sessão. */
     public static String gerarToken() {
         byte[] bytes = new byte[32];

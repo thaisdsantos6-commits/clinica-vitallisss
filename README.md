@@ -6,7 +6,7 @@ Sistema de gerenciamento de clínica médica (Centro de Saúde Vitalis), desenvo
 
 O backend em Java também serve o frontend e usa PostgreSQL para persistir pacientes e consultas.
 
-> **Importante:** usuários e sessões ainda são mantidos em memória. As credenciais de demonstração não devem ser usadas em produção.
+> **Importante:** usuários e sessões ficam gravados no PostgreSQL (a sessão sobrevive a reinícios do servidor). As credenciais de demonstração não devem ser usadas em produção.
 
 ## Tecnologias
 

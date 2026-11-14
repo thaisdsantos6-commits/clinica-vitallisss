@@ -85,6 +85,13 @@ public final class Database {
                 + "ALTER TABLE usuarios ADD CONSTRAINT usuarios_papel_check CHECK (papel IN ('ADMIN', 'MEDICO', 'RECEPCAO')); "
                 + "END IF; END $$";
         String loginUnico = "CREATE UNIQUE INDEX IF NOT EXISTS usuarios_login_unico ON usuarios (LOWER(login))";
+        // Sessões de login: ficam no banco para sobreviver a reinícios do servidor.
+        // Guarda só o hash do token; ao excluir o usuário, as sessões dele somem junto.
+        String sessoes = "CREATE TABLE IF NOT EXISTS sessoes ("
+                + "token_hash CHAR(64) PRIMARY KEY,"
+                + "usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,"
+                + "ultimo_uso TIMESTAMPTZ NOT NULL DEFAULT NOW())";
+        String sessoesPorUsuario = "CREATE INDEX IF NOT EXISTS sessoes_usuario_idx ON sessoes (usuario_id)";
 
         try (Connection conexao = conectar();
              java.sql.Statement statement = conexao.createStatement()) {
@@ -94,6 +101,8 @@ public final class Database {
             statement.execute(usuarios);
             statement.execute(migrarPapeis);
             statement.execute(loginUnico);
+            statement.execute(sessoes);
+            statement.execute(sessoesPorUsuario);
         } catch (SQLException e) {
             throw new DatabaseException("Não foi possível inicializar as tabelas do PostgreSQL.", e.getSQLState(), e);
         }

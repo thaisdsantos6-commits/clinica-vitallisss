@@ -1,12 +1,11 @@
 package service;
 
-import java.util.HashMap;
-import java.util.Map;
 import model.Usuario;
+import repository.SessaoRepository;
 import repository.UsuarioRepository;
 import util.Seguranca;
 
-/** Autenticação de usuários (persistidos no PostgreSQL) e controle de sessões (em memória). */
+/** Autenticação de usuários (persistidos no PostgreSQL) e controle de sessões (também no PostgreSQL). */
 public class AutenticacaoService {
     // ====================================================================
     //  CREDENCIAL DE DEMONSTRAÇÃO (DEMO) — NÃO USE EM PRODUÇÃO.
@@ -22,22 +21,17 @@ public class AutenticacaoService {
     public static final long INATIVIDADE_MS = 10 * 60 * 1000L;
 
     private final UsuarioRepository repository;
-    private final Map<String, Sessao> sessoes = new HashMap<>();
+    private final SessaoRepository sessoes;
     // hash descartável: mantém o tempo de resposta parecido quando o login não existe
     private final String hashFalso = Seguranca.gerarHash("senha-inexistente");
 
-    private static final class Sessao {
-        final int usuarioId;
-        long ultimoUso;
-
-        Sessao(int usuarioId, long ultimoUso) {
-            this.usuarioId = usuarioId;
-            this.ultimoUso = ultimoUso;
-        }
+    public AutenticacaoService(UsuarioRepository repository) {
+        this(repository, new SessaoRepository());
     }
 
-    public AutenticacaoService(UsuarioRepository repository) {
+    public AutenticacaoService(UsuarioRepository repository, SessaoRepository sessoes) {
         this.repository = repository;
+        this.sessoes = sessoes;
     }
 
     /**
@@ -77,11 +71,10 @@ public class AutenticacaoService {
     // ---------------------------------------------------------------- sessões
 
     /** Cria uma sessão para o usuário e devolve o token (enviado ao navegador em cookie HttpOnly). */
-    public synchronized String iniciarSessao(Usuario usuario) {
-        long agora = System.currentTimeMillis();
-        sessoes.values().removeIf(s -> agora - s.ultimoUso > INATIVIDADE_MS);
+    public String iniciarSessao(Usuario usuario) {
+        sessoes.removerExpiradas(INATIVIDADE_MS);
         String token = Seguranca.gerarToken();
-        sessoes.put(token, new Sessao(usuario.getId(), agora));
+        sessoes.criar(Seguranca.hashToken(token), usuario.getId());
         return token;
     }
 
@@ -90,7 +83,8 @@ public class AutenticacaoService {
      * inexistente/expirada ou se o usuário foi desativado ou excluído desde o login.
      */
     public Usuario validarSessao(String token) {
-        int usuarioId = renovarSessao(token);
+        if (token == null || token.isBlank()) return null;
+        int usuarioId = sessoes.renovar(Seguranca.hashToken(token), INATIVIDADE_MS);
         if (usuarioId < 0) return null;
 
         Usuario usuario = repository.buscarPorId(usuarioId);
@@ -101,26 +95,12 @@ public class AutenticacaoService {
         return usuario;
     }
 
-    private synchronized int renovarSessao(String token) {
-        if (token == null) return -1;
-        Sessao sessao = sessoes.get(token);
-        if (sessao == null) return -1;
-
-        long agora = System.currentTimeMillis();
-        if (agora - sessao.ultimoUso > INATIVIDADE_MS) {
-            sessoes.remove(token);
-            return -1;
-        }
-        sessao.ultimoUso = agora;
-        return sessao.usuarioId;
-    }
-
-    public synchronized void encerrarSessao(String token) {
-        if (token != null) sessoes.remove(token);
+    public void encerrarSessao(String token) {
+        if (token != null && !token.isBlank()) sessoes.remover(Seguranca.hashToken(token));
     }
 
     /** Derruba todas as sessões de um usuário (ao desativar, excluir ou trocar a senha). */
-    public synchronized void encerrarSessoesDoUsuario(int usuarioId) {
-        sessoes.values().removeIf(s -> s.usuarioId == usuarioId);
+    public void encerrarSessoesDoUsuario(int usuarioId) {
+        sessoes.removerDoUsuario(usuarioId);
     }
 }
