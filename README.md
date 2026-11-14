@@ -27,7 +27,7 @@ O backend em Java também serve o frontend e usa PostgreSQL para persistir pacie
 - **Exclusão de pacientes** (as consultas do paciente excluído também são removidas)
 - **Agendamento de consultas** (paciente, médico, data e hora), com orçamento total opcional em reais
 - **Edição e remoção do orçamento** pela agenda, com valores exibidos em BRL
-- **Reagendamento** e **listagem de consultas**, agrupadas por dia
+- **Reagendamento**, **cancelamento** (a consulta fica marcada como cancelada e o horário é liberado) e **listagem de consultas**, agrupadas por dia
 - **Dashboard** (tela inicial) com a próxima consulta, totais e próximos atendimentos
 - **Validação de dados** no frontend (retorno rápido) e **novamente no backend** (a regra que vale)
 - Tema claro/escuro

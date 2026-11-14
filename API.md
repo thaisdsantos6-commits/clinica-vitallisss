@@ -27,6 +27,7 @@ Base: `http://localhost:8080`. Corpo e respostas em JSON (UTF-8).
 | `GET /api/appointments` | toda a agenda, com orçamento | toda a agenda, **sem** `orcamentoCentavos` | só a própria, sem orçamento |
 | `POST /api/appointments` | sim | sim, sem orçamento (enviar `orcamentoCentavos` dá `403`) | `403` |
 | `PUT /api/appointments/{id}` (reagendar) | sim | sim | `403` |
+| `PUT /api/appointments/{id}/cancel` (cancelar) | sim | sim | `403` |
 | `PUT /api/appointments/{id}/budget` | sim | `403` | `403` |
 | `/api/users` (todos os métodos) | sim | `403` | `403` |
 
@@ -111,6 +112,13 @@ Erros: `400` (médico vazio ou > 80 caracteres, data inválida, data no passado,
 Enviado: `{"dataHora": "2026-10-09T10:00"}`
 
 Resposta `200`: a consulta atualizada. Erros: `400` (data inválida, no passado ou conflito de horário do médico), `404` (consulta inexistente).
+
+### `PUT /api/appointments/{id}/cancel` — cancelar
+
+Sem corpo. Marca a consulta com `"status": "CANCELADA"`: o registro continua no banco (histórico) e o horário do médico fica livre para outro agendamento.
+
+Resposta `200`: a consulta atualizada. Erros: `400` (consulta já cancelada ou que já ocorreu), `404` (consulta inexistente).
+Uma consulta cancelada não pode ser reagendada (`400`).
 
 ### `PUT /api/appointments/{id}/budget` — orçamento
 
