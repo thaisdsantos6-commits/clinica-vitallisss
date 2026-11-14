@@ -1,0 +1,318 @@
+/* Centro de Saúde Vitalis — Acessibilidade do usuário
+   Par com acessibilidade.js. Reutiliza os tokens de style.css (--brand, --surface, --ink...).
+   Para usar em outra página: inclua este arquivo DEPOIS do CSS principal.
+
+   Índice
+   1. Correções de base (WCAG 2.2 AA): campos, placeholder, texto pequeno, agenda, rolagem
+   2. Atalhos para pular ao conteúdo
+   3. Botão flutuante e painel
+   4. Modos escolhidos pelo usuário: texto, contraste, leitura, links, foco, animações
+   5. Cores forçadas, impressão
+   ========================================================================= */
+
+:root{
+  --a11y-campo:#667F73;                 /* borda de campos: 3:1 ou mais contra o fundo (WCAG 1.4.11) */
+  --a11y-fab:56px;
+  --a11y-margem:20px;
+  --a11y-base:calc(var(--a11y-margem) + env(safe-area-inset-bottom,0px));
+}
+:root[data-theme="dark"]{ --a11y-campo:#7FA090 }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --a11y-campo:#7FA090 }
+}
+/* No celular, o botão sobe para não cobrir a barra de navegação inferior do app */
+@media (max-width: 860px){
+  :root{ --a11y-base:calc(var(--a11y-barra,72px) + 16px + env(safe-area-inset-bottom,0px)) }   /* --a11y-barra: medida pelo JS */
+}
+/* ...mas na tela de login (sem barra inferior) ele volta para o canto */
+@supports selector(:has(*)){
+  @media (max-width: 860px){
+    :root:has(#app-view[hidden]){ --a11y-base:calc(var(--a11y-margem) + env(safe-area-inset-bottom,0px)) }
+  }
+}
+
+/* ============ 1. Correções de base ============ */
+
+/* Campos: borda visível (1.4.11) e placeholder legível (1.4.3) */
+.input{ border-color:var(--a11y-campo) }
+.input::placeholder{ opacity:1 }
+
+/* Textos pequenos demais: mínimo de 14 px (a barra inferior do celular usa 13 px por falta de espaço) */
+.dica,.demo-note,.seguro,.demo-tag,.demo-tag button,.side-user small,.pessoa .sub,
+.chip,.dia-marca small,th,td[data-label]::before,.consulta-orcamento,.foto-remover{ font-size:.875rem }
+@media (max-width: 860px){
+  .nav-btn{ font-size:min(.875rem,3.6vw) }   /* cresce com a fonte escolhida, até caber na barra */
+}
+
+/* Consultas já realizadas: antes ficavam em 55% de opacidade (contraste insuficiente) */
+.consulta.passada{ opacity:.78 }
+
+/* Agenda estreita (tela Consultas no desktop): nome do paciente não pode ser espremido letra por letra.
+   Quando a coluna for estreita, as ações descem para a linha de baixo. */
+@media (min-width: 721px){
+  .dia > div:not(.dia-marca){ container-type:inline-size }
+  @container (max-width: 40rem){
+    .consulta{ grid-template-columns:4rem minmax(0,1fr) }
+    .consulta-acoes{ grid-column:2; justify-content:flex-start }
+  }
+}
+
+/* Reflow em telas estreitas e com fonte grande (1.4.10): grades "1fr" crescem até o tamanho do conteúdo
+   e empurram a página para o lado; minmax(0,1fr) deixa o conteúdo se adaptar à coluna. */
+@media (max-width: 960px){
+  .inicio-grid,.consultas-grid{ grid-template-columns:minmax(0,1fr) }
+}
+.painel{ min-width:0 }
+.form{ grid-template-columns:minmax(0,1fr) }   /* coluna "auto" crescia até a largura do <select> e vazava */
+.field{ min-width:0; grid-template-columns:minmax(0,1fr) }
+.hora-grande{ font-size:min(clamp(3.75rem,9vw,6rem),20vw) }
+.proxima-corpo{ min-width:0 }
+.proxima-corpo > *{ overflow-wrap:anywhere }
+/* Os 3 totais da tela Início passam a uma coluna quando não cabem lado a lado */
+.inicio-grid{ container-type:inline-size }
+@container (max-width: 20rem){
+  .resumo{ grid-template-columns:minmax(0,1fr) }
+  .resumo div{ flex-direction:row; align-items:baseline; gap:16px; padding:14px 0; border-right:0; border-bottom:1px solid var(--line) }
+  .resumo div:first-child{ padding-top:0 }
+  .resumo div:last-child{ border-bottom:0; padding-bottom:0 }
+}
+/* Conteúdo que não quebrava de linha e vazava (ou ficava cortado pela tabela) com fonte grande */
+.secao-head{ flex-wrap:wrap }
+.consulta-orcamento{ white-space:normal; overflow-wrap:anywhere; min-height:2.125rem; height:auto; padding-block:6px }
+@media (max-width: 720px){
+  td[data-label]{ flex-wrap:wrap }
+  .cpf-cel{ flex-wrap:wrap; min-width:0 }
+  .cpf{ overflow-wrap:anywhere }
+}
+h1,h2,h3,.sub,.top p{ overflow-wrap:anywhere }
+.dia-marca{ flex-wrap:wrap }
+.chip{ white-space:normal; overflow-wrap:anywhere }
+.resumo span{ overflow-wrap:anywhere }
+@media (max-width: 720px){ .dia{ grid-template-columns:minmax(0,1fr) } }
+/* Barra de navegação inferior (celular): os nomes quebram em vez de vazar quando a fonte ou o espaçamento crescem */
+@media (max-width: 860px){
+  .side{ padding-inline:6px }
+  .nav{ min-width:0 }
+  .nav-btn{ min-width:0; padding-inline:2px; overflow-wrap:anywhere }
+  .side-foot .nav-btn{ width:auto; min-width:64px }
+}
+
+/* O botão flutuante nunca pode esconder o fim do conteúdo, nem o item que recebe o foco (2.4.11) */
+.main{ padding-bottom:calc(var(--a11y-fab) + 56px); scroll-padding-block:16px calc(var(--a11y-fab) + 40px) }
+.login-panel{ padding-bottom:calc(var(--a11y-fab) + 40px) }
+html{ scroll-padding-bottom:calc(var(--a11y-fab) + 40px) }
+
+/* ============ 2. Atalhos para pular ao conteúdo ============ */
+.a11y-pular{ position:fixed; z-index:2000; top:0; left:0; display:flex; flex-wrap:wrap; gap:8px; padding:8px; pointer-events:none }
+.a11y-pular a{ pointer-events:auto; padding:10px 16px; border:2px solid var(--focus);
+  border-radius:10px; background:var(--surface); color:var(--ink); font:600 .9375rem/1.3 var(--f-body);
+  text-decoration:underline; text-underline-offset:3px; box-shadow:0 10px 30px -10px rgba(6,30,24,.5) }
+/* Escondido de verdade (não só deslocado) até receber o foco do teclado */
+.a11y-pular a:not(:focus){ position:absolute; width:1px; height:1px; padding:0; border:0; overflow:hidden; clip-path:inset(50%); white-space:nowrap; box-shadow:none }
+.a11y-pular a:focus{ outline:3px solid var(--focus); outline-offset:2px }
+
+/* ============ 3. Botão flutuante e painel ============ */
+.a11y-sr{ position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0 }
+.a11y{ font-family:var(--f-body) }
+.a11y-ic{ flex:none; display:block }
+
+.a11y-fab{ position:fixed; z-index:1000; right:calc(var(--a11y-margem) + env(safe-area-inset-right,0px)); bottom:var(--a11y-base);
+  width:var(--a11y-fab); height:var(--a11y-fab); display:grid; place-items:center; padding:0; cursor:pointer;
+  border:3px solid var(--surface); border-radius:50%; background:var(--brand); color:var(--on-brand);
+  box-shadow:0 12px 28px -8px rgba(6,30,24,.7); transition:background .15s, transform .15s, box-shadow .15s }
+.a11y-fab:hover{ background:var(--brand-hover) }
+.a11y-fab:active{ transform:scale(.95) }
+.a11y-fab[aria-expanded="true"]{ background:var(--brand-hover); box-shadow:0 0 0 3px var(--brass), 0 12px 28px -8px rgba(6,30,24,.7) }
+.a11y-fab:focus-visible{ outline:3px solid var(--focus); outline-offset:4px; border-radius:50% }
+
+.a11y-painel{ position:fixed; z-index:1001; right:calc(var(--a11y-margem) + env(safe-area-inset-right,0px));
+  bottom:calc(var(--a11y-base) + var(--a11y-fab) + 14px);
+  width:min(23.75rem, calc(100vw - 24px), 540px);
+  max-height:calc(100vh - var(--a11y-base) - var(--a11y-fab) - 30px);
+  max-height:calc(100dvh - var(--a11y-base) - var(--a11y-fab) - 30px);
+  display:flex; flex-direction:column; overflow:hidden;
+  background:var(--surface); color:var(--ink); border:1px solid var(--line);
+  border-radius:24px 24px 6px 24px;          /* mesma assinatura dos diálogos do site, com o canto pequeno apontando para o botão */
+  box-shadow:0 30px 80px -20px rgba(6,30,24,.55);
+  transform-origin:100% 100%; opacity:0; visibility:hidden; transform:translateY(14px) scale(.97);
+  transition:opacity .18s ease, transform .22s cubic-bezier(.2,.8,.2,1), visibility 0s linear .22s }
+.a11y-painel.a11y-aberto{ opacity:1; visibility:visible; transform:none; transition-delay:0s }
+@media (max-height: 520px){                  /* celular deitado: painel ao lado do botão, na altura toda */
+  .a11y-painel{ bottom:12px; max-height:calc(100dvh - 24px); right:calc(var(--a11y-margem) + var(--a11y-fab) + 14px) }
+}
+
+.a11y-topo{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:20px 16px 12px 22px }
+.a11y-topo > div{ min-width:0 }
+.a11y-topo h2{ font:400 1.5rem/1.2 var(--f-display); margin:0 0 4px; overflow-wrap:anywhere }
+.a11y-topo h2:focus{ outline:none }
+.a11y-topo p{ margin:0; color:var(--ink-2); font-size:.875rem; line-height:1.45 }
+.a11y-fechar{ flex:none; display:grid; place-items:center; width:44px; height:44px; padding:0; cursor:pointer;
+  border:1.5px solid var(--line); border-radius:10px; background:transparent; color:var(--ink) }
+.a11y-fechar:hover{ background:var(--surface-2) }
+
+.a11y-corpo{ overflow-y:auto; overscroll-behavior:contain; padding:0 12px 8px; scrollbar-width:thin }
+.a11y-grupo + .a11y-grupo{ margin-top:10px; padding-top:10px; border-top:1px solid var(--line) }
+.a11y-grupo h3{ margin:4px 10px 4px; font:700 .9375rem/1.3 var(--f-body); color:var(--ink-2) }
+
+.a11y-linha{ display:grid; grid-template-columns:2.25rem minmax(0,1fr) auto; align-items:center; gap:6px 12px;
+  min-height:56px; padding:8px 10px; border-radius:14px; cursor:pointer }
+.a11y-linha:hover{ background:var(--surface-2) }
+.a11y-linha.a11y-fixa{ cursor:default }
+.a11y-linha.a11y-fixa:hover{ background:none }
+.a11y-linha .a11y-ico{ display:grid; place-items:center; width:2.25rem; height:2.25rem; border-radius:50%; background:var(--surface-2); color:var(--brand) }
+.a11y-linha:hover .a11y-ico{ background:var(--surface) }
+.a11y-nome{ display:block; font-weight:600; font-size:.9375rem; line-height:1.3 }
+.a11y-dica{ display:block; margin-top:2px; color:var(--ink-2); font-size:.875rem; line-height:1.4 }
+.a11y-ctrl{ grid-column:2 / -1 }              /* controles largos (3 opções) ficam abaixo do título */
+
+/* Chave liga/desliga (input checkbox com role="switch") */
+.a11y-chave{ -webkit-appearance:none; appearance:none; position:relative; flex:none; margin:0; cursor:pointer;
+  width:3rem; height:1.75rem; border-radius:999px; border:2px solid var(--a11y-campo); background:var(--surface-2);
+  transition:background .18s, border-color .18s }
+.a11y-chave::after{ content:""; position:absolute; top:50%; left:.1875rem; width:1.125rem; height:1.125rem; margin-top:-.5625rem;
+  border-radius:50%; background:var(--ink-2); transition:transform .18s, background .18s }
+.a11y-chave::before{ content:""; position:absolute; z-index:1; top:50%; left:calc(.1875rem + 1.25rem + .5625rem - .1875rem);
+  width:.375rem; height:.6875rem; margin-top:-.4375rem; border:solid var(--brand); border-width:0 2px 2px 0;
+  transform:rotate(45deg) scale(.6); opacity:0; transition:opacity .18s, transform .18s }
+.a11y-chave:checked{ background:var(--brand); border-color:var(--brand) }
+.a11y-chave:checked::after{ transform:translateX(1.25rem); background:var(--on-brand) }
+.a11y-chave:checked::before{ opacity:1; transform:rotate(45deg) scale(1) }
+.a11y-chave:focus-visible{ outline:3px solid var(--focus); outline-offset:3px; border-radius:999px }
+
+/* Aumentar / diminuir texto */
+.a11y-passo{ display:flex; align-items:center; gap:4px }
+.a11y-passo button{ display:grid; place-items:center; width:44px; height:44px; padding:0; cursor:pointer;
+  border:1.5px solid var(--a11y-campo); border-radius:10px; background:var(--surface); color:var(--ink) }
+.a11y-passo button:hover{ background:var(--surface-2) }
+.a11y-passo button[aria-disabled="true"]{ opacity:.4; cursor:not-allowed }
+.a11y-valor{ min-width:3.5rem; text-align:center; font-weight:700; font-size:.9375rem; font-variant-numeric:tabular-nums }
+.a11y-mini{ margin-top:2px; padding:4px 0; border:0; background:none; cursor:pointer; color:var(--brand);
+  font:600 .875rem/1.3 var(--f-body); text-decoration:underline; text-underline-offset:3px }
+
+/* Três opções (Normal / Médio / Grande) */
+.a11y-seg{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); border:1.5px solid var(--a11y-campo); border-radius:10px; overflow:hidden; background:var(--surface) }
+.a11y-seg label{ position:relative; display:grid; cursor:pointer }
+.a11y-seg label + label{ border-left:1.5px solid var(--a11y-campo) }
+.a11y-seg input{ position:absolute; inset:0; margin:0; opacity:0; cursor:pointer }
+.a11y-seg span{ display:grid; place-items:center; min-height:44px; padding:6px 4px; text-align:center; font-weight:600; font-size:.875rem }
+.a11y-seg input:checked + span{ background:var(--brand); color:var(--on-brand) }
+.a11y-seg input:focus-visible + span{ box-shadow:inset 0 0 0 2px var(--surface), inset 0 0 0 5px var(--ink) }
+
+/* Painel estreito em relação ao tamanho do texto (celular pequeno, fonte grande): controles descem para baixo do título */
+.a11y-painel{ container-type:inline-size }
+@container (max-width: 20rem){
+  .a11y-passo{ grid-column:2 / -1; justify-content:flex-start }
+  .a11y-seg{ grid-template-columns:minmax(0,1fr) }
+  .a11y-seg label + label{ border-left:0; border-top:1.5px solid var(--a11y-campo) }
+  .a11y-linha > .a11y-chave{ grid-column:2 / -1; justify-self:start }
+}
+.a11y-nome,.a11y-dica{ overflow-wrap:anywhere }
+
+.a11y-pe{ padding:12px 16px 16px; border-top:1px solid var(--line); display:grid; gap:10px }
+.a11y-pe p{ margin:0; color:var(--ink-2); font-size:.875rem; line-height:1.45 }
+.a11y-redefinir{ display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:46px; padding:0 20px; cursor:pointer;
+  border:1.5px solid var(--line); border-radius:10px; background:transparent; color:var(--ink); font:600 .9375rem/1 var(--f-body) }
+.a11y-redefinir:hover{ background:var(--surface-2) }
+
+/* ============ 4. Modos escolhidos pelo usuário ============ */
+
+/* ---- Fonte de fácil leitura ---- */
+html.a11y-fonte{
+  --f-body:'Atkinson Hyperlegible','Verdana','Tahoma',system-ui,sans-serif;
+  --f-display:'Atkinson Hyperlegible','Verdana','Tahoma',system-ui,sans-serif;
+}
+html.a11y-fonte :is(h1,h2,h3,.brand,.hora,.hora-grande,.dia-marca,.resumo b,.vazio-titulo,.vazio-bloco strong,.a11y-topo h2){ font-weight:700 }
+
+/* ---- Espaço entre letras e linhas (WCAG 1.4.12: o layout não pode quebrar com estes valores) ---- */
+html[data-a11y-letras="1"] *,html[data-a11y-letras="1"] *::before,html[data-a11y-letras="1"] *::after{ letter-spacing:.06em !important }
+html[data-a11y-letras="2"] *,html[data-a11y-letras="2"] *::before,html[data-a11y-letras="2"] *::after{ letter-spacing:.12em !important; word-spacing:.16em !important }
+html[data-a11y-linhas="1"] body *{ line-height:1.7 !important }
+html[data-a11y-linhas="2"] body *{ line-height:2 !important }
+html[data-a11y-linhas] :is(.hora-grande,.dia-marca,.resumo b,.hora,.avatar,.a11y-fab){ line-height:1.25 !important }
+html[data-a11y-linhas] .btn,html[data-a11y-linhas] .nav-btn{ line-height:1.35 !important }
+
+/* ---- Contraste alto: preto com amarelo (com o modo de leitura vira preto sobre branco) ---- */
+:root.a11y-contraste{
+  --bg:#000; --surface:#000; --surface-2:#171717; --ink:#fff; --ink-2:#f2f2f2; --line:#fff;
+  --brand:#ffe600; --brand-hover:#fff; --on-brand:#000;
+  --leaf:#ffe600; --brass:#ffe600; --brass-text:#ffe600; --on-brass:#000;
+  --danger:#ff9b94; --danger-bg:#2b0000; --ok:#7dffb3; --ok-bg:#00240f;
+  --ring:rgba(255,230,0,.4); --focus:#00e5ff;
+  --side:#000; --side-2:#1d1d1d; --side-ink:#fff; --side-mute:#f0f0f0;
+  --a11y-campo:#fff;
+  color-scheme:dark;
+}
+:root.a11y-contraste.a11y-leitura{
+  --bg:#fff; --surface:#fff; --surface-2:#ececec; --ink:#000; --ink-2:#1a1a1a; --line:#000;
+  --brand:#0a3d2e; --brand-hover:#000; --on-brand:#fff;
+  --leaf:#0a3d2e; --brass:#e0b000; --brass-text:#5c3d00; --on-brass:#000;
+  --danger:#a00018; --danger-bg:#fde8ea; --ok:#0a5a30; --ok-bg:#dff3e7;
+  --ring:rgba(10,61,46,.3); --focus:#0030c9;
+  --side:#06251c; --side-2:#0b3a2c; --side-ink:#fff; --side-mute:#e4eee9;
+  --a11y-campo:#000;
+  color-scheme:light;
+}
+html.a11y-contraste a,html.a11y-contraste .link{ text-decoration:underline; text-underline-offset:3px }
+html.a11y-contraste :is(.btn.ghost,.icon-btn,.chip,.input){ border-color:var(--ink) }
+html.a11y-contraste .chip{ box-shadow:inset 0 0 0 1px currentColor }
+html.a11y-contraste :is(.tabela-wrap,.painel,.proxima,.msg){ border:2px solid var(--line) }
+html.a11y-contraste dialog{ border:2px solid var(--line) }
+html.a11y-contraste .app .side{ border-right:2px solid var(--side-ink) }
+html.a11y-contraste .demo-tag{ border-color:currentColor }
+html.a11y-contraste .toast{ border:2px solid var(--side-ink) }
+html.a11y-contraste .btn.danger:not(.ghost){ color:#000 }
+html.a11y-contraste.a11y-leitura .btn.danger:not(.ghost){ color:#fff }
+html.a11y-contraste :is(.rings,.proxima-aneis,.ecg-line){ display:none }
+@media (max-width: 860px){
+  html.a11y-contraste .app .side{ border-right:0; border-top:2px solid var(--side-ink) }
+}
+
+/* ---- Modo de leitura: fundo claro, mais ar e sem enfeites ---- */
+:root.a11y-leitura{
+  --bg:#fff; --surface:#fff; --surface-2:#eef3f0; --ink:#0b1a15; --ink-2:#32463e; --line:#9db0a6; --a11y-campo:#587367;
+}
+html.a11y-leitura body{ line-height:1.7 }
+html.a11y-leitura :is(.rings,.proxima-aneis,.ecg-line){ display:none }
+html.a11y-leitura :is(.top p,.sub,.dica,.vazio-inline,.art-copy p){ max-width:70ch }
+
+/* ---- Destacar links e botões (o foco continua mais forte que o destaque) ---- */
+html.a11y-links :is(a[href],.link,.demo-tag button){
+  text-decoration:underline 2px; text-underline-offset:.25em; font-weight:700;
+  background:rgba(224,176,0,.22); border-radius:4px; box-decoration-break:clone }
+html.a11y-links :is(button,.btn,.icon-btn,.nav-btn,select.input,[role="button"]):not(.a11y-fab):not(.a11y *){
+  outline:2px solid var(--ink); outline-offset:2px }
+html.a11y-links :is(.side,.login-art,.proxima) :is(button,.btn,.icon-btn,.nav-btn):not(.a11y *){ outline-color:#e9cb83 }
+html.a11y-links :is(a[href],.link,button,.btn,.icon-btn,.nav-btn,select.input,[role="button"]):not(.a11y-fab):not(.a11y *):focus-visible{
+  outline:4px solid var(--focus); outline-offset:3px }
+html.a11y-links .btn:not(.ghost){ font-weight:700 }
+html.a11y-links .icon-btn{ border-width:2px; border-color:var(--ink) }
+
+/* ---- Foco do teclado reforçado ---- */
+html.a11y-foco :focus-visible{ outline:4px solid var(--ink) !important; outline-offset:3px !important;
+  box-shadow:0 0 0 3px var(--surface) !important; border-radius:6px }
+html.a11y-foco :is(.side,.login-art,.proxima) :focus-visible{ outline-color:#e9cb83 !important; box-shadow:0 0 0 3px var(--side) !important }
+html.a11y-foco.a11y-contraste :focus-visible{ outline-color:var(--focus) !important }
+html.a11y-foco .a11y-fab:focus-visible{ border-radius:50% }
+
+/* ---- Pausar animações ---- */
+html.a11y-sem-animacao *,html.a11y-sem-animacao *::before,html.a11y-sem-animacao *::after{
+  animation:none !important; transition:none !important; scroll-behavior:auto !important }
+html.a11y-sem-animacao .ecg{ stroke-dashoffset:0 }
+
+/* ============ 5. Cores forçadas e impressão ============ */
+@media (forced-colors: active){
+  .a11y-fab{ forced-color-adjust:none; background:ButtonFace; color:ButtonText; border:2px solid ButtonText }
+  .a11y-fab:hover,.a11y-fab[aria-expanded="true"]{ background:Highlight; color:HighlightText; border-color:Highlight }
+  .a11y-painel{ border:2px solid CanvasText }
+  .a11y-chave{ forced-color-adjust:none; background:Canvas; border-color:ButtonText }
+  .a11y-chave::after{ background:ButtonText }
+  .a11y-chave::before{ border-color:Highlight }
+  .a11y-chave:checked{ background:Highlight; border-color:Highlight }
+  .a11y-chave:checked::after{ background:HighlightText }
+  .a11y-seg input:checked + span{ forced-color-adjust:none; background:Highlight; color:HighlightText }
+  .a11y-seg input:focus-visible + span{ box-shadow:none; outline:3px solid CanvasText; outline-offset:-5px }
+  .a11y-pular a{ border-color:CanvasText }
+}
+@media print{
+  .a11y,.a11y-pular{ display:none !important }
+}

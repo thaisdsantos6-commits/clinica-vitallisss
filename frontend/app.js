@@ -2,7 +2,8 @@
    Seções, na ordem: 1 Estado · 2 Utilidades · 3 API · 4 Formatação · 5 Navegação ·
    6 Carregamento · 7 Renderização · 8 Cadastro · 9 Exclusão · 10 Agendamento ·
    11 Login/autenticação · 12 Usuários (administrador) · 13 Inicialização.
-   Perfis: ADMIN (acesso total) e MEDICO (só a própria agenda e os pacientes que atende, sem orçamento).
+   Perfis: ADMIN (acesso total), RECEPCAO (pacientes e agenda, sem orçamento, sem excluir, sem usuários) e
+   MEDICO (só a própria agenda e os pacientes que atende, sem orçamento). O servidor é quem impede; aqui só se esconde.
    A interface esconde o que o perfil não pode usar, mas quem decide é o servidor (403). */
 (() => {
 'use strict';
@@ -25,6 +26,15 @@ const CONFIG = {
 
 let sessao = null, pacientes = [], consultas = [], usuarios = [], viewAtual = 'inicio', ultimoFoco = null;
 const ehAdmin = () => sessao?.papel === 'ADMIN';
+const ehRecepcao = () => sessao?.papel === 'RECEPCAO';
+// Espelho das permissões do servidor (model/Usuario.java). Mudou lá? Mude aqui também, para a tela não oferecer o que o servidor recusa.
+const veTudo = () => ehAdmin() || ehRecepcao();      // todos os pacientes e toda a agenda
+const podeGerirPacientes = veTudo;                   // cadastrar e editar
+const podeExcluirPacientes = ehAdmin;
+const podeAgendar = veTudo;                          // agendar e reagendar
+const veOrcamento = ehAdmin;                         // ver e definir
+const podeGerirUsuarios = ehAdmin;
+const ROTULOS_PAPEL = { ADMIN: 'Administrador', MEDICO: 'Médico', RECEPCAO: 'Recepção' };
 
 /* =====================================================================
    2. SELETORES E UTILIDADES (sempre textContent: nunca innerHTML com dados)
@@ -114,13 +124,14 @@ function cpfCom(base9) {
 }
 
 const demo = { pacientes: [], consultas: [], seqP: 1, seqC: 1, usuario: null,
-  usuarios: [{ id: 1, login: 'admin', papel: 'ADMIN', medico: null, ativo: true }, { id: 2, login: 'medico', papel: 'MEDICO', medico: 'Dra. Camila Rocha', ativo: true }], seqU: 3 };
+  usuarios: [{ id: 1, login: 'admin', papel: 'ADMIN', medico: null, ativo: true }, { id: 2, login: 'medico', papel: 'MEDICO', medico: 'Dra. Camila Rocha', ativo: true }, { id: 3, login: 'recepcao', papel: 'RECEPCAO', medico: null, ativo: true }], seqU: 4 };
 const ApiDemo = {
   async autenticar(login, senha) {
     await delay(400);
     if (!login || !senha) return null;
-    const medico = login.trim().toLowerCase() === 'medico';
-    demo.usuario = medico ? { papel: 'MEDICO', medico: 'Dra. Camila Rocha' } : { papel: 'ADMIN', medico: null };
+    const quem = login.trim().toLowerCase();
+    demo.usuario = quem === 'medico' ? { papel: 'MEDICO', medico: 'Dra. Camila Rocha' }
+      : quem === 'recepcao' ? { papel: 'RECEPCAO', medico: null } : { papel: 'ADMIN', medico: null };
     return { login, ...demo.usuario };
   },
   async listarPacientes() {
@@ -164,6 +175,7 @@ const ApiDemo = {
       return demo.consultas.filter(c => c.medico.toLowerCase() === demo.usuario.medico.toLowerCase())
         .map(({ orcamentoCentavos, ...c }) => c);
     }
+    if (demo.usuario?.papel === 'RECEPCAO') return demo.consultas.map(({ orcamentoCentavos, ...c }) => c);   // sem orçamento, como no servidor
     return demo.consultas.map(c => ({ ...c }));
   },
   async listarUsuarios() {
@@ -401,14 +413,14 @@ function quando(dt) {
     5. NAVEGAÇÃO
     ===================================================================== */
 const VIEWS = {
-  inicio:    { titulo: () => `Bem-vindo, ${ehAdmin() ? sessao.login : (sessao.medico || sessao.login)}!`, sub: () => cap(fmtDiaLongo.format(new Date())), acao: { txt: 'Agendar consulta', admin: true, fazer: () => abrirDialogo() } },
-  pacientes: { titulo: () => 'Pacientes', sub: () => ehAdmin() ? 'Cadastre e consulte quem é atendido na clínica.' : 'Pacientes que você atende.', acao: { txt: 'Novo paciente', admin: true, fazer: () => abrirDialogo() } },
-  consultas: { titulo: () => ehAdmin() ? 'Consultas' : 'Minha agenda', sub: () => ehAdmin() ? 'Agende por médico, data e hora e acompanhe a agenda.' : 'Seus atendimentos, por dia e horário.', acao: { txt: 'Agendar consulta', admin: false, fazer: () => prepararFormConsulta() } },
-  usuarios:  { titulo: () => 'Usuários', sub: () => 'Crie e gerencie os acessos de administradores e médicos.', acao: { txt: 'Novo usuário', admin: true, fazer: () => abrirUsuario() } }
+  inicio:    { titulo: () => `Bem-vindo, ${veTudo() ? sessao.login : (sessao.medico || sessao.login)}!`, sub: () => cap(fmtDiaLongo.format(new Date())), acao: { txt: 'Agendar consulta', quem: podeAgendar, fazer: () => abrirDialogo() } },
+  pacientes: { titulo: () => 'Pacientes', sub: () => veTudo() ? 'Cadastre e consulte quem é atendido na clínica.' : 'Pacientes que você atende.', acao: { txt: 'Novo paciente', quem: podeGerirPacientes, fazer: () => abrirDialogo() } },
+  consultas: { titulo: () => veTudo() ? 'Consultas' : 'Minha agenda', sub: () => veTudo() ? 'Agende por médico, data e hora e acompanhe a agenda.' : 'Seus atendimentos, por dia e horário.', acao: { txt: 'Agendar consulta', quem: () => false, fazer: () => prepararFormConsulta() } },
+  usuarios:  { titulo: () => 'Usuários', sub: () => 'Crie e gerencie os acessos de administradores, médicos e recepção.', acao: { txt: 'Novo usuário', quem: podeGerirUsuarios, fazer: () => abrirUsuario() } }
 };
-const acaoDaView = v => { const a = VIEWS[v].acao; return a && (!a.admin || ehAdmin()) ? a : null; };
+const acaoDaView = v => { const a = VIEWS[v].acao; return a && (!a.quem || a.quem()) ? a : null; };
 function ir(v) {
-  if (v === 'usuarios' && !ehAdmin()) v = 'inicio';
+  if (v === 'usuarios' && !podeGerirUsuarios()) v = 'inicio';
   viewAtual = v;
   $$('.view').forEach(s => s.hidden = s.id !== 'v-' + v);
   $$('.nav-btn[data-view]').forEach(b => b.hasAttribute('data-view') && (b.dataset.view === v ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current')));
@@ -437,7 +449,7 @@ $('#btn-limpar').addEventListener('click', async () => {
    6. CARREGAMENTO DE DADOS
    ===================================================================== */
 async function carregar() {
-  try { [pacientes, consultas, usuarios] = await Promise.all([Api.listarPacientes(), Api.listarConsultas(), ehAdmin() ? Api.listarUsuarios() : []]); }
+  try { [pacientes, consultas, usuarios] = await Promise.all([Api.listarPacientes(), Api.listarConsultas(), podeGerirUsuarios() ? Api.listarUsuarios() : []]); }
   catch (err) { if (!(err instanceof ErroSessao)) toast('Não foi possível carregar os dados. Tente novamente.'); return; }
   renderInicio(); renderPacientes(); renderUsuarios(); renderAgenda($('#consultas-agenda'), ordenar(consultas), 'Nenhuma consulta agendada.'); prepararFormConsulta();
 }
@@ -454,8 +466,8 @@ function renderInicio() {
     corpo.replaceChildren(...[
       h('p', { class: 'rotulo', text: 'Próxima consulta' }),
       h('p', { class: 'vazio-titulo', text: 'Agenda livre por enquanto.' }),
-      h('p', { class: 'vazio-txt', text: !ehAdmin() ? 'Você não tem consultas agendadas no momento.' : temPac ? 'Nenhuma consulta agendada. Escolha um paciente e marque o primeiro horário.' : 'Cadastre o primeiro paciente para começar a agendar consultas.' }),
-      ehAdmin() && h('button', { class: 'btn accent', type: 'button', onclick: () => temPac ? ir('consultas') : abrirDialogo() }, temPac ? 'Agendar consulta' : 'Cadastrar paciente')
+      h('p', { class: 'vazio-txt', text: !veTudo() ? 'Você não tem consultas agendadas no momento.' : temPac ? 'Nenhuma consulta agendada. Escolha um paciente e marque o primeiro horário.' : 'Cadastre o primeiro paciente para começar a agendar consultas.' }),
+      (temPac ? podeAgendar() : podeGerirPacientes()) && h('button', { class: 'btn accent', type: 'button', onclick: () => temPac ? ir('consultas') : abrirDialogo() }, temPac ? 'Agendar consulta' : 'Cadastrar paciente')
     ].filter(Boolean));
   } else {
     const d = new Date(prox.dataHora);
@@ -470,11 +482,11 @@ function renderInicio() {
   const hoje = futuras.filter(c => diffDias(new Date(c.dataHora), agora) === 0).length;
   const linha = (n, um, varios) => h('div', {}, h('b', { text: String(n) }), h('span', { text: plural(n, um, varios) }));
   $('#resumo').replaceChildren(
-    ehAdmin() ? linha(pacientes.length, 'paciente cadastrado', 'pacientes cadastrados') : linha(pacientes.length, 'paciente atendido', 'pacientes atendidos'),
+    veTudo() ? linha(pacientes.length, 'paciente cadastrado', 'pacientes cadastrados') : linha(pacientes.length, 'paciente atendido', 'pacientes atendidos'),
     linha(consultas.length, 'consulta agendada', 'consultas agendadas'),
     linha(hoje, 'consulta hoje', 'consultas hoje')
   );
-  renderAgenda($('#inicio-agenda'), futuras.slice(0, 6), ehAdmin() ? 'Nenhum atendimento à vista. Que tal agendar uma consulta?' : 'Nenhum atendimento à vista.');
+  renderAgenda($('#inicio-agenda'), futuras.slice(0, 6), podeAgendar() ? 'Nenhum atendimento à vista. Que tal agendar uma consulta?' : 'Nenhum atendimento à vista.');
 }
 
 function renderAgenda(el, lista, vazioMsg) {
@@ -493,12 +505,12 @@ function renderAgenda(el, lista, vazioMsg) {
           h('div', {}, h('div', { class: 'quem', text: c.pacienteNome }), h('div', { class: 'medico', text: 'com ' + c.medico })),
           h('div', { class: 'consulta-acoes' },
             h('span', { class: 'chip', text: c.convenio }),
-            ehAdmin() && h('span', { class: 'chip orcamento-chip', text: c.orcamentoCentavos == null ? 'Sem orçamento' : fmtDinheiroCentavos(c.orcamentoCentavos) }),
-            ehAdmin() && h('button', { class: 'btn ghost consulta-orcamento', type: 'button',
+            veOrcamento() && h('span', { class: 'chip orcamento-chip', text: c.orcamentoCentavos == null ? 'Sem orçamento' : fmtDinheiroCentavos(c.orcamentoCentavos) }),
+            veOrcamento() && h('button', { class: 'btn ghost consulta-orcamento', type: 'button',
               text: c.orcamentoCentavos == null ? 'Definir orçamento' : 'Editar orçamento',
               'aria-label': `${c.orcamentoCentavos == null ? 'Definir' : 'Editar'} orçamento da consulta de ${c.pacienteNome}`,
               onclick: () => abrirOrcamento(c) }),
-            ehAdmin() && h('button', { class: 'icon-btn sm', type: 'button', disabled: passada,
+            podeAgendar() && h('button', { class: 'icon-btn sm', type: 'button', disabled: passada,
               'aria-label': passada ? `Consulta de ${c.pacienteNome} já ocorreu` : `Reagendar consulta de ${c.pacienteNome}`,
               onclick: () => abrirReagendar(c) }, icon('reagendar', 17))));
       })));
@@ -512,9 +524,9 @@ function renderPacientes() {
     area.replaceChildren(
       h('div', { class: 'vazio-tabela tabela-wrap' },
         h('div', { class: 'vazio-bloco' },
-          h('strong', { text: ehAdmin() ? 'Nenhum paciente cadastrado.' : 'Nenhum paciente na sua agenda.' }),
-          h('span', { text: ehAdmin() ? 'Cadastre o primeiro paciente para liberar o agendamento de consultas.' : 'Os pacientes aparecem aqui quando houver consultas agendadas com você.' }),
-          ehAdmin() && h('button', { class: 'btn primary', type: 'button', onclick: () => abrirDialogo() }, 'Cadastrar paciente')
+          h('strong', { text: veTudo() ? 'Nenhum paciente cadastrado.' : 'Nenhum paciente na sua agenda.' }),
+          h('span', { text: veTudo() ? 'Cadastre o primeiro paciente para liberar o agendamento de consultas.' : 'Os pacientes aparecem aqui quando houver consultas agendadas com você.' }),
+          podeGerirPacientes() && h('button', { class: 'btn primary', type: 'button', onclick: () => abrirDialogo() }, 'Cadastrar paciente')
         )
       )
     );
@@ -607,7 +619,7 @@ function renderPacientes() {
       ),
       h('td', { 'data-label': 'CPF' }, h('div', { class: 'cpf-cel' }, span, btn)),
       h('td', { 'data-label': 'Convênio' }, h('span', { class: 'chip', text: p.convenio })),
-      h('td', { 'data-label': 'Ações' }, h('div', { class: 'acoes-inline' }, detalhes, ehAdmin() && editar, ehAdmin() && remover))
+      h('td', { 'data-label': 'Ações' }, h('div', { class: 'acoes-inline' }, detalhes, podeGerirPacientes() && editar, podeExcluirPacientes() && remover))
     );
   });
 
@@ -639,7 +651,7 @@ let pacienteDetalheAtual = null;
 
 function abrirDetalhesPaciente(p) {
   pacienteDetalheAtual = p;
-  $('#d-editar').hidden = !ehAdmin(); $('#d-excluir').hidden = !ehAdmin();
+  $('#d-editar').hidden = !podeGerirPacientes(); $('#d-excluir').hidden = !podeExcluirPacientes();
   dNome.textContent = p.nome;
   dCpf.textContent = fmtCpf(p.cpf);
   dConvenio.textContent = p.convenio;
@@ -658,13 +670,13 @@ function abrirDetalhesPaciente(p) {
 $('#d-fechar').addEventListener('click', () => dlgDetalhes.close());
 dlgDetalhes.addEventListener('click', e => { if (e.target === dlgDetalhes) dlgDetalhes.close(); });
 $('#d-editar').addEventListener('click', () => {
-  if (!pacienteDetalheAtual || !ehAdmin()) return;
+  if (!pacienteDetalheAtual || !podeGerirPacientes()) return;
   const paciente = pacienteDetalheAtual;
   dlgDetalhes.close();
   abrirDialogo(paciente);
 });
 $('#d-excluir').addEventListener('click', async () => {
-  if (!pacienteDetalheAtual || !ehAdmin()) return;
+  if (!pacienteDetalheAtual || !podeExcluirPacientes()) return;
   dlgDetalhes.close();
   await excluirPaciente(pacienteDetalheAtual);
   pacienteDetalheAtual = null;
@@ -964,11 +976,12 @@ async function entrar(usuario) {
   sessao = { login: usuario.login, papel: usuario.papel || 'ADMIN', medico: usuario.medico || null };
   $('#login-view').hidden = true; $('#app-view').hidden = false;
   $('#user-login').textContent = sessao.login;
-  $('#user-papel').textContent = ehAdmin() ? 'Administrador' : 'Médico';
+  $('#user-papel').textContent = ROTULOS_PAPEL[sessao.papel] || 'Médico';
   $('#user-avatar').textContent = inicial(sessao.login);
-  $('#nav-usuarios').hidden = !ehAdmin();
-  $('#painel-agendar').hidden = !ehAdmin();
-  $('#consultas-grid').classList.toggle('so-agenda', !ehAdmin());
+  $('#nav-usuarios').hidden = !podeGerirUsuarios();
+  $('#painel-agendar').hidden = !podeAgendar();
+  $('#consultas-grid').classList.toggle('so-agenda', !podeAgendar());
+  inOrcamento.closest('.field').hidden = !veOrcamento();   // recepção agenda, mas não define orçamento
   $('#demo-tag').hidden = CONFIG.MODO !== 'demo';
   await carregar();
   ir('inicio');
@@ -1002,11 +1015,11 @@ aoExpirarSessao = () => sair('Sessão expirada. Entre novamente.');
 const dlgU = $('#dlg-usuario'), formU = $('#form-usuario'), msgU = $('#msg-usuario');
 const uLogin = $('#u-login'), uPapel = $('#u-papel'), uMedico = $('#u-medico'), uSenha = $('#u-senha'), uAtivo = $('#u-ativo');
 let usuarioEditando = null;
-const rotuloPapel = p => p === 'ADMIN' ? 'Administrador' : 'Médico';
+const rotuloPapel = p => ROTULOS_PAPEL[p] || p;
 
 function renderUsuarios() {
   const area = $('#usuarios-area'), cont = $('#usuarios-contagem');
-  if (!ehAdmin()) { area.replaceChildren(); cont.textContent = ''; return; }
+  if (!podeGerirUsuarios()) { area.replaceChildren(); cont.textContent = ''; return; }
   const linhas = usuarios.map(u => {
     const eu = sessao && u.login.toLowerCase() === sessao.login.toLowerCase();
     return h('tr', {},
@@ -1050,7 +1063,7 @@ $('#u-cancelar').addEventListener('click', () => dlgU.close());
 
 formU.addEventListener('submit', async e => {
   e.preventDefault();
-  if (!ehAdmin()) return;
+  if (!podeGerirUsuarios()) return;
   $$('input, select', formU).forEach(i => i.removeAttribute('aria-invalid'));
   const editar = usuarioEditando, papel = uPapel.value, login = uLogin.value.trim(), medico = uMedico.value.trim(), senha = uSenha.value;
   const falha = (msg, campo) => { setMsg(msgU, msg); campo.setAttribute('aria-invalid', 'true'); campo.focus(); };
@@ -1078,7 +1091,7 @@ formU.addEventListener('submit', async e => {
 });
 
 async function excluirUsuario(u) {
-  if (!ehAdmin() || !confirm(`Excluir o usuário ${u.login}? Ele perderá o acesso imediatamente.`)) return;
+  if (!podeGerirUsuarios() || !confirm(`Excluir o usuário ${u.login}? Ele perderá o acesso imediatamente.`)) return;
   try {
     await Api.removerUsuario(u.id);
     await carregar();
@@ -1094,653 +1107,3 @@ async function excluirUsuario(u) {
 $('#demo-note').hidden = CONFIG.MODO !== 'demo';
 inLogin.focus();
 })();
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-n

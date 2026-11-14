@@ -147,8 +147,8 @@ public class ApiServer {
 
         if ("GET".equalsIgnoreCase(method) && path.equals("/api/patients")) {
             StringBuilder json = new StringBuilder("[");
-            // administrador vê todos; médico vê só os pacientes que atende
-            List<Paciente> pacientes = usuario.isAdmin()
+            // administrador e recepção veem todos; médico vê só os pacientes que atende
+            List<Paciente> pacientes = usuario.podeVerTodosPacientes()
                     ? pacienteController.listar()
                     : pacienteController.listarDoMedico(usuario.getMedico());
             for (int i = 0; i < pacientes.size(); i++) {
@@ -160,8 +160,9 @@ public class ApiServer {
             return;
         }
 
-        // cadastrar, editar e excluir pacientes: somente administrador (médico apenas consulta)
-        if (!usuario.isAdmin()) {
+        // cadastrar e editar: administrador e recepção; excluir: somente administrador; médico apenas consulta
+        boolean excluindo = "DELETE".equalsIgnoreCase(method);
+        if (excluindo ? !usuario.podeExcluirPacientes() : !usuario.podeGerenciarPacientes()) {
             sendError(ex, 403, "Você não tem permissão para esta ação.");
             return;
         }
@@ -211,21 +212,22 @@ public class ApiServer {
 
         if ("GET".equalsIgnoreCase(method) && path.equals("/api/appointments")) {
             StringBuilder json = new StringBuilder("[");
-            // administrador vê toda a agenda; médico vê só as próprias consultas, sem o orçamento
-            List<Consulta> consultas = usuario.isAdmin()
+            // administrador e recepção veem toda a agenda; médico vê só as próprias consultas.
+            // O orçamento só vai para quem pode vê-lo (administrador).
+            List<Consulta> consultas = usuario.podeVerTodaAgenda()
                     ? agendaService.listarTodas()
                     : agendaService.listarPorMedico(usuario.getMedico());
             for (int i = 0; i < consultas.size(); i++) {
                 if (i > 0) json.append(",");
-                json.append(appointmentJson(consultas.get(i), usuario.isAdmin()));
+                json.append(appointmentJson(consultas.get(i), usuario.podeVerOrcamento()));
             }
             json.append("]");
             sendJson(ex, 200, json.toString());
             return;
         }
 
-        // agendar, reagendar e orçamentos: somente administrador
-        if (!usuario.isAdmin()) {
+        // agendar e reagendar: administrador e recepção; orçamentos: somente administrador
+        if (!usuario.podeAgendar()) {
             sendError(ex, 403, "Você não tem permissão para esta ação.");
             return;
         }
@@ -241,15 +243,23 @@ public class ApiServer {
             }
 
             LocalDateTime dataHora = parseDataHora(campo(corpo, "dataHora"));
+            Long orcamento = parseOrcamentoCentavos(corpo.get("orcamentoCentavos"));
+            if (orcamento != null && !usuario.podeVerOrcamento()) {
+                sendError(ex, 403, "Você não tem permissão para definir orçamentos.");
+                return;
+            }
             // médico obrigatório, data futura e horário livre são validados em AgendaService
             Consulta consulta = agendaService.agendar(
-                    paciente, campo(corpo, "medico"), dataHora,
-                    parseOrcamentoCentavos(corpo.get("orcamentoCentavos")));
-            sendJson(ex, 201, appointmentJson(consulta, true));
+                    paciente, campo(corpo, "medico"), dataHora, orcamento);
+            sendJson(ex, 201, appointmentJson(consulta, usuario.podeVerOrcamento()));
             return;
         }
 
         if ("PUT".equalsIgnoreCase(method) && path.matches("/api/appointments/\\d{1,9}/budget")) {
+            if (!usuario.podeVerOrcamento()) {
+                sendError(ex, 403, "Você não tem permissão para definir orçamentos.");
+                return;
+            }
             int id = idDoCaminho(path.substring(0, path.lastIndexOf('/')));
             Map<String, String> corpo = lerJson(ex);
             if (!corpo.containsKey("orcamentoCentavos")) {
@@ -275,7 +285,7 @@ public class ApiServer {
                 sendError(ex, 404, "Consulta não encontrada.");
                 return;
             }
-            sendJson(ex, 200, appointmentJson(consulta, true));
+            sendJson(ex, 200, appointmentJson(consulta, usuario.podeVerOrcamento()));
             return;
         }
 
@@ -285,7 +295,7 @@ public class ApiServer {
     private static void users(HttpExchange ex) throws IOException {
         Usuario usuario = usuarioLogado(ex);
         if (usuario == null) return;
-        if (!usuario.isAdmin()) {
+        if (!usuario.podeGerenciarUsuarios()) {
             sendError(ex, 403, "Somente o administrador gerencia usuários.");
             return;
         }
@@ -568,7 +578,7 @@ public class ApiServer {
         return json + "}";
     }
 
-    /** O orçamento só é enviado a quem pode vê-lo (administrador); o médico nunca o recebe. */
+    /** O orçamento só é enviado a quem pode vê-lo (administrador); médico e recepção nunca o recebem. */
     private static String appointmentJson(Consulta c, boolean incluirOrcamento) {
         return "{"
                 + "\"id\":" + c.getId() + ","
