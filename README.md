@@ -155,6 +155,25 @@ run.bat
 CLINICA_ADMIN_LOGIN=seu_login CLINICA_ADMIN_SENHA=sua_senha java -jar target/clinica-vitallis-1.0.0.jar
 ```
 
+## Perfis de acesso
+
+Há três perfis. O servidor é quem impede ações não permitidas (resposta `403`); a tela só esconde o que não funcionaria.
+
+| Ação | Administrador | Recepção | Médico |
+|---|:-:|:-:|:-:|
+| Ver pacientes | todos | todos | só os que atende |
+| Cadastrar e editar pacientes | sim | sim | não |
+| Excluir pacientes | sim | **não** | não |
+| Ver a agenda | toda | toda | só a própria |
+| Agendar e reagendar consultas | sim | sim | não |
+| Ver e definir orçamentos | sim | **não** | não |
+| Gerenciar usuários | sim | não | não |
+
+- **Criar uma recepcionista:** entre como administrador, abra **Usuários → Novo usuário** e escolha o perfil **Recepção** (não precisa informar nome de médico).
+- **Mudar as regras:** edite os métodos `pode...()` em `backend/src/model/Usuario.java` e os espelhos no começo de `frontend/app.js` (`veTudo`, `podeAgendar`, `veOrcamento`...). Por exemplo, para a recepção também cuidar de orçamentos, troque `veOrcamento` / `podeVerOrcamento` para incluir o perfil.
+- **Bancos já existentes:** na primeira inicialização com esta versão o servidor atualiza sozinho a restrição da coluna `usuarios.papel` (antes só aceitava `ADMIN` e `MEDICO`). A atualização é automática, segura para repetir e não apaga dados.
+- **Modo demonstração:** o login `recepcao` entra como Recepção; `medico`, como Médico; qualquer outro, como administrador.
+
 ## Acessibilidade
 
 O painel de acessibilidade é um módulo independente: `frontend/acessibilidade.css` + `frontend/acessibilidade.js`. Para usá-lo em outra página, basta incluir os dois no `<head>` (o CSS depois do CSS principal). O JavaScript cria sozinho o botão, o painel e os atalhos de teclado.
@@ -210,7 +229,7 @@ Todas as rotas, exceto `/api/login` e `/api/logout`, exigem sessão válida (`40
 ## Melhorias futuras
 
 - Autenticação mais robusta (HTTPS, limite de tentativas no servidor, múltiplos usuários)
-- Controle de permissões por perfil
+- Controle de permissões por perfil (Administrador, Recepção e Médico)
 - Cancelamento de consultas
 - Testes automatizados
 - Documentação da API em formato OpenAPI

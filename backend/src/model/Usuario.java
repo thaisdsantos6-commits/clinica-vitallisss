@@ -3,6 +3,7 @@ package model;
 public class Usuario {
     public static final String ADMIN = "ADMIN";
     public static final String MEDICO = "MEDICO";
+    public static final String RECEPCAO = "RECEPCAO";
 
     private final int id;
     private final String login;
@@ -29,4 +30,20 @@ public class Usuario {
 
     public boolean isAdmin() { return ADMIN.equals(papel); }
     public boolean isMedico() { return MEDICO.equals(papel); }
+    public boolean isRecepcao() { return RECEPCAO.equals(papel); }
+
+    public static boolean papelValido(String papel) {
+        return ADMIN.equals(papel) || MEDICO.equals(papel) || RECEPCAO.equals(papel);
+    }
+
+    // ---- Permissões: único lugar que decide o que cada perfil pode fazer (o servidor aplica; o front só espelha) ----
+    // Administrador: tudo. Recepção: atendimento (pacientes e agenda), sem orçamento, sem exclusão e sem usuários.
+    // Médico: somente consulta da própria agenda e dos pacientes que atende, sem orçamento.
+    public boolean podeVerTodosPacientes()  { return isAdmin() || isRecepcao(); }
+    public boolean podeGerenciarPacientes() { return isAdmin() || isRecepcao(); }   // cadastrar e editar
+    public boolean podeExcluirPacientes()   { return isAdmin(); }
+    public boolean podeVerTodaAgenda()      { return isAdmin() || isRecepcao(); }
+    public boolean podeAgendar()            { return isAdmin() || isRecepcao(); }   // agendar e reagendar
+    public boolean podeVerOrcamento()       { return isAdmin(); }                   // ver e definir
+    public boolean podeGerenciarUsuarios()  { return isAdmin(); }
 }

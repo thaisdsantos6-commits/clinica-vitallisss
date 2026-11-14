@@ -35,8 +35,8 @@ public class UsuarioService {
         }
         validarSenha(senha);
         papel = papel == null ? "" : papel.strip().toUpperCase();
-        if (!Usuario.ADMIN.equals(papel) && !Usuario.MEDICO.equals(papel)) {
-            throw new IllegalArgumentException("Perfil inválido. Escolha Administrador ou Médico.");
+        if (!Usuario.papelValido(papel)) {
+            throw new IllegalArgumentException("Perfil inválido. Escolha Administrador, Médico ou Recepção.");
         }
         medico = Usuario.MEDICO.equals(papel) ? validarMedico(medico) : null;
 

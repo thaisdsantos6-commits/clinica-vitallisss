@@ -10,9 +10,27 @@ Base: `http://localhost:8080`. Corpo e respostas em JSON (UTF-8).
 |---|---|
 | `400` | Dado inválido ou JSON malformado (a mensagem explica) |
 | `401` | Sem sessão / sessão expirada / credenciais inválidas |
+| `403` | O perfil do usuário não permite esta ação (veja *Permissões por perfil*) |
 | `404` | Recurso não encontrado |
 | `405` | Método não permitido nesta URL |
 | `500` | Erro interno inesperado |
+
+**Perfis (`papel`):** `ADMIN`, `RECEPCAO` e `MEDICO`.
+
+### Permissões por perfil
+
+| Endpoint | ADMIN | RECEPCAO | MEDICO |
+|---|:-:|:-:|:-:|
+| `GET /api/patients` | todos | todos | só os que atende |
+| `POST` e `PUT /api/patients` | sim | sim | `403` |
+| `DELETE /api/patients/{id}` | sim | `403` | `403` |
+| `GET /api/appointments` | toda a agenda, com orçamento | toda a agenda, **sem** `orcamentoCentavos` | só a própria, sem orçamento |
+| `POST /api/appointments` | sim | sim, sem orçamento (enviar `orcamentoCentavos` dá `403`) | `403` |
+| `PUT /api/appointments/{id}` (reagendar) | sim | sim | `403` |
+| `PUT /api/appointments/{id}/budget` | sim | `403` | `403` |
+| `/api/users` (todos os métodos) | sim | `403` | `403` |
+
+Em `POST /api/users`, `papel` aceita `ADMIN`, `MEDICO` ou `RECEPCAO`; só `MEDICO` exige o campo `medico`.
 
 ---
 
